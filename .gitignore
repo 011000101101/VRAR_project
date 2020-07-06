@@ -3,4 +3,3 @@ bin_blobs/*.pkl
 .pytest_cache
 __pycache__
 media
-*.pkl
