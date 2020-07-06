@@ -1,5 +1,11 @@
+# no binary blobs which can be computed from files already present, e.g. using scripts in ./precompute/
 bin_blobs/*.pkl
+# no PyCharm related files and folders
 .idea
 .pytest_cache
+# no chache
 __pycache__
+# no media which might be subject of restrictive licenses
 media
+# no trained models, as they can be very big (e.g. knn > 4GB)
+classifier_subsystem/trained_*.pkl
