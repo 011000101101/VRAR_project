@@ -24,7 +24,7 @@ font_paths = [
     ("togalite-black", "togalite/togalite-black.otf"),
     ("chikara_dzuyoku", "chikara_dzuyoku/851CHIKARA-DZUYOKU_kanaA_004.ttf"),
     ("nikkyou_sans", "NikkyouSans/NikkyouSans-B6aV.ttf"),
-    ("xano_mincho", "00/Xano-Mincho/XANO-mincho-U32.ttf")
+    ("xano_mincho", "Xano-Mincho/XANO-mincho-U32.ttf")
 ]
 b, g, r, a = 0, 0, 0, 0  # totally black
 empty_img = np.ones((50,50,3),np.uint8)

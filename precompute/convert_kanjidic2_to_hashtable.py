@@ -121,7 +121,7 @@ def entry_list_to_map(entries_in: list):
 
 
 def convert():
-    tree = ET.parse('../resources/kanjidic2.xml')
+    tree = ET.parse('../resources/kanjidic2/kanjidic2.xml')
 
     entries = tree.findall("character")
 

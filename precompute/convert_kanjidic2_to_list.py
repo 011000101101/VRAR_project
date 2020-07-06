@@ -10,7 +10,7 @@ def convert():
     """
 
     # load kanjidic2 file as an element tree
-    tree = ET.parse('../resources/kanjidic2.xml')
+    tree = ET.parse('../resources/kanjidic2/kanjidic2.xml')
 
     # find all kanji entries
     entries = tree.findall("character")

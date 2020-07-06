@@ -174,7 +174,7 @@ def entry_list_to_map(entries_in: list):
 
 
 def convert():
-    tree = ET.parse('../resources/JMdict_e')
+    tree = ET.parse('../resources/JMdict/JMdict_e')
 
     entries = tree.findall("entry/k_ele/...")
 

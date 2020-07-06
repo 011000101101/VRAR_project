@@ -1,10 +1,6 @@
-bin_blobs/*
+bin_blobs/*.pkl
 .idea
 .pytest_cache
 __pycache__
 media
-resources/JMdict_e
-resources/JMdict_e.gz
-resources/kanjidic2.xml
-resources/kanjidic2.xml.gz
 *.pkl
