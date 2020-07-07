@@ -61,8 +61,8 @@ if __name__ == "__main__":
     X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.01, shuffle=True)
 
     # train
-    # model = train_only(X_train, y_train)
+    model = train_only(X_train, y_train)
 
     # evaluate
-    total, correct = eval_only("knn", X_val, y_val, False)
+    total, correct = eval_only(model, X_val, y_val, False)
     print("evaluated on {} images, labelled {} correctly.".format(total, correct))

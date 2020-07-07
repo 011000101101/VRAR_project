@@ -1,3 +1,15 @@
+## Usage
+
+First run ./precompute/precompute.py to create binary blobs required by the system.
+
+**Classifier-Subsystem**
+
+./classifier_subsystem/model.py provides a framework to quickly train and evaluate a model.
+
+./classifier_subsystem/knn.py creates a K-NearestNeighbour model, loads samples and trains and evaluates the model.
+
+Additional models should be added in their own file analogous to ./classifier_subsystem/knn.py.
+
 ## License
 
 This work contains content from other creators  subject to their own copyrights and licenses. 
