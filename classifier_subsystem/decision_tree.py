@@ -1,8 +1,9 @@
 """
-KNN Model using scikit-learn implementation
+Decision Tree Model using scikit-learn implementation
 """
 
-from sklearn import neighbors
+
+from sklearn import tree
 
 import classifier_subsystem.model
 import utils.classify_util as classify_utils
@@ -13,11 +14,10 @@ if __name__ == "__main__":
     X_train, X_val, y_train, y_val = classify_utils.load_train_data(clean=True)
 
     # define model
-    n_neighbors = 15
-    model = neighbors.KNeighborsClassifier(n_neighbors, weights='distance')
+    model = tree.DecisionTreeClassifier()
 
     # train
-    classifier_subsystem.model.train(model, X_train, y_train, "knn")
+    classifier_subsystem.model.train(model, X_train, y_train, "dt")
 
     # evaluate
     total, correct = classifier_subsystem.model.evaluate(model, X_val, y_val, False)

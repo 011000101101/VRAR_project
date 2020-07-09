@@ -13,6 +13,7 @@ def augment(image_samples):
     :return: a list containing the original as well as the augmented image samples with the kanji they depict
     """
     samples = []
+    clean_samples = []
 
     i= 0
     print(len(image_samples.keys()))
@@ -41,7 +42,9 @@ def augment(image_samples):
             samples.append((img_all_blur_gauss, kanji))
             samples.append((img_all_blur_bilateral, kanji))
 
-    return samples
+            clean_samples.append((image[1], kanji))
+
+    return samples, clean_samples
 
 
 if __name__ == "__main__":
@@ -51,8 +54,12 @@ if __name__ == "__main__":
         image_samples = pickle.load(f)
 
     # augment
-    samples = augment(image_samples)
+    samples, clean_samples = augment(image_samples)
 
     # save augmented image samples to disk
     with open("../bin_blobs/kanji_image_samples_augmentes.pkl", 'wb') as f:
         pickle.dump(samples, f, pickle.HIGHEST_PROTOCOL)
+
+    # save augmented image samples to disk
+    with open("../bin_blobs/kanji_image_samples_clean.pkl", 'wb') as f:
+        pickle.dump(clean_samples, f, pickle.HIGHEST_PROTOCOL)
