@@ -9,26 +9,32 @@ def downsample(image, height, inter = cv2.INTER_AREA):
     resized = cv2.resize(image, dim, interpolation = inter)
     return resized
 
+# wait till you get a satisfying picture. then press esc and enter filename in console
 def saveTestImage():
     capture = cv2.VideoCapture(0)
-    success = False
-    while not success:
-        success , image = capture.read()
-    image = downsample(image, 600)
-    filename = input("Enter filename: ")
-    filename = filename + ".png"
-    cv2.imwrite(filename, image)
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
+    while True:
+        success, image = capture.read()
+        if not success:
+            continue
+        cv2.imshow("Test", image)
+        if cv2.waitKey(1000) == 27:
+            cv2.destroyWindow("Test")
+            filename = input("Enter filename: ")
+            filename = filename + ".png"
+            cv2.imwrite(filename, image)
+            break
 
 def testLiveImage():
     capture = cv2.VideoCapture(0)
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
     success = False
     while not success:
         success , image = capture.read()
-    return downsample(image, 600)
+    return image
 
 def sortCriteriaBoundingBoxes(box):
-    (x,y,w,h) = box
-    return x
+    return box[0]
 
 def findBoundingRectangle(RectangleList, imageHeight, imageWidth):
     x_min = imageWidth - 1
@@ -49,7 +55,20 @@ def findBoundingRectangle(RectangleList, imageHeight, imageWidth):
     h = y_max-y_min
     return (x_min, y_min, w, h)
 
-def filterPossibleRoisByKanjiContoursColumnwise(possibleRois, grey):
+def filterRoisBySize(possibleRois, imageHeight, imageWidth):
+    rois = []
+    for roi in possibleRois:
+        (x,y,w,h) = roi
+        if h == imageHeight:
+            continue
+        if w*h*5 > imageHeight*imageWidth:
+            continue
+        if w*h*15000< imageHeight*imageWidth:
+            continue
+        rois.append(roi)
+    return rois
+
+def filterRoisByKanjiContoursColumnwise(possibleRois, grey):
     (imageHeight, imageWidth) = grey.shape[:2]
     edges = cv2.Canny(grey, 50, 100, L2gradient=True)
     rois = []
@@ -98,10 +117,11 @@ def filterPossibleRoisByKanjiContoursColumnwise(possibleRois, grey):
         
     return rois
 
-def filterPossibleRoisByKanjiContours(possibleRois, grey):
+def filterRoisByKanjiContours(possibleRois, grey):
     (imageHeight, imageWidth) = grey.shape[:2]
-    edges = cv2.Canny(grey, 50, 100, L2gradient=True)
-    edges = cv2.dilate(edges, None)
+    edges = cv2.Canny(grey, 100, 200, L2gradient=True)
+    edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT ,(3,3)))
+    cv2.imshow("edges", edges)
     rois = []
     debug = False
     for roi in possibleRois:
@@ -149,17 +169,6 @@ def filterPossibleRoisByKanjiContours(possibleRois, grey):
         
     return rois
 
-
-def filterPossibleRois(possibleRois, image, grey, imageHeight, imageWidth):
-    rois = []
-    for roi in possibleRois:
-        (x,y,w,h) = roi
-        #filter contour of whole image by assuming a contour with full height must be that one
-        if h == imageHeight:
-            continue
-        rois.append(roi)
-    return rois
-
 def resizeRois(possibleRois, currentHeight, wantedHeight):
     scaleFactor = wantedHeight / float(currentHeight)
     scaledRois = []
@@ -168,11 +177,8 @@ def resizeRois(possibleRois, currentHeight, wantedHeight):
         scaledRois.append((math.floor(x*scaleFactor), math.floor(y*scaleFactor), math.ceil(w*scaleFactor), math.ceil(h*scaleFactor)))
         
     return scaledRois
-        
 
-
-def segmentation(image, blackhatKernel, closingKernel):
-    debug = True
+def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
     (imageHeight, imageWidth) = image.shape[:2]
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     downsampledImage = downsample(grey, 480)
@@ -208,23 +214,30 @@ def segmentation(image, blackhatKernel, closingKernel):
             if x <= xOther and y <= yOther and xOther+wOther <= x+w and yOther+hOther <= y+h:
                 possibleRois.append((x,y,w,h))
                 break
-
+    
+    if debugLevel >= 1:
+        print("possibleRois: " + str(len(possibleRois)))
+    
+    possibleRois = filterRoisBySize(possibleRois, imageHeightDownsampled, imageWidthDownsampled)
     possibleRois = resizeRois(possibleRois, imageHeightDownsampled, imageHeight)
 
-    rois = filterPossibleRoisByKanjiContours(possibleRois, grey)
-    #rois = filterPossibleRois(possibleRois, image, grey, imageHeight, imageWidth)
+    #rois = filterRoisByKanjiContoursColumnwise(possibleRois, grey)
+    rois = filterRoisByKanjiContours(possibleRois, grey)
+    rois = filterRoisBySize(rois, imageHeight, imageWidth)
 
-    if debug:
+    if debugLevel>=1:
         for roi in rois:
             (x, y, w, h) = roi
             cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
-        #cv2.imshow("Debug", image)
+        print("rois: " + str(len(rois)))
+    if debugLevel>=2:
+        for roi in possibleRois:
+            (x, y, w, h) = roi
+            cv2.rectangle(image, (x, y), (x+w, y+h), (255,0,0))
 
-    print(len(possibleRois))
-    print(len(rois))
     return image
 
-def useCamera(blackhatKernel, closingKernel):
+def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
     while True:
@@ -232,7 +245,7 @@ def useCamera(blackhatKernel, closingKernel):
         if not success:
             continue
         e1 = cv2.getTickCount()
-        image = segmentation(image, blackhatKernel, closingKernel)
+        image = segmentation(image, blackhatKernel, closingKernel, debugLevel)
         e2 = cv2.getTickCount()
         time = (e2 - e1)/ cv2.getTickFrequency()
         print("last segmentation time:" + str(time))
@@ -240,138 +253,23 @@ def useCamera(blackhatKernel, closingKernel):
         if cv2.waitKey(25) == 27:
             break
 
-def dump():
-    blackhat = cv2.morphologyEx(grayImage, cv2.MORPH_BLACKHAT, blackhatKernel)
-    gradX = cv2.Sobel(blackhat, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
-    gradX = np.absolute(gradX)
-    (minVal, maxVal) = (np.min(gradX), np.max(gradX))
-    gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
-    gradX = cv2.morphologyEx(blackhat, cv2.MORPH_CLOSE, closingKernel)
-    thresh = cv2.threshold(gradX, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-    blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))#13,5
-    blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 13))
-    cannyMorph = cv2.Sobel(edges, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
-    cannyMorph = np.absolute(cannyMorph)
-    (minVal, maxVal) = (np.min(cannyMorph), np.max(cannyMorph))
-    cannyMorph = (255 * ((cannyMorph - minVal) / (maxVal - minVal))).astype("uint8")
-    cannyMorph = cv2.morphologyEx(cannyMorph, cv2.MORPH_CLOSE, blackhatKernelY)
-    cannyMorph = cv2.threshold(cannyMorph, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    #cv2.imshow("canny morph", cannyMorph)
-
-    blackhatX = cv2.morphologyEx(blurred, cv2.MORPH_BLACKHAT, blackhatKernelX)
-    blackhatY = cv2.morphologyEx(blurred, cv2.MORPH_BLACKHAT, blackhatKernelY)
-    #cv2.imshow("Blackhat", blackhat)
-
-    gradX = cv2.Sobel(blackhatX, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
-    gradX = np.absolute(gradX)
-    (minVal, maxVal) = (np.min(gradX), np.max(gradX))
-    gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
-    gradX = cv2.morphologyEx(gradX, cv2.MORPH_CLOSE, blackhatKernelX)
-    thresh = cv2.threshold(gradX, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    #cv2.imshow("Blackhat closed X", thresh)
-
-    gradY = cv2.Sobel(blackhatY, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
-    gradY = np.absolute(gradY)
-    (minVal, maxVal) = (np.min(gradY), np.max(gradY))
-    gradY = (255 * ((gradY - minVal) / (maxVal - minVal))).astype("uint8")
-    gradY = cv2.morphologyEx(gradY, cv2.MORPH_CLOSE, blackhatKernelY)
-    gradY = cv2.threshold(gradY, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    #cv2.imshow("Blackhat closed Y", gradY)
-
-
-def comparePipelinese(image, blackhatKernelX, blackhatKernelY, closingKernel):
-    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    #cv2.imshow("Grey", grey)
-    blurred = cv2.GaussianBlur(grey, (3,3), 0.5)
-    mode = 2
-
-    if mode == 1:
-        #TEST BLACKHAT AND GRADIENTS
-        blackhatKerneltest = cv2.getStructuringElement(cv2.MORPH_RECT, (90, 90))
-        closingKernal = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
-        blackhat = cv2.morphologyEx(blurred, cv2.MORPH_BLACKHAT, blackhatKerneltest)
-
-        gradY = cv2.Sobel(blackhat, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
-        gradY = np.absolute(gradY)
-        (minVal, maxVal) = (np.min(gradY), np.max(gradY))
-        gradY = (255 * ((gradY - minVal) / (maxVal - minVal))).astype("uint8")
-
-        gradX = cv2.Sobel(blackhat, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
-        gradX = np.absolute(gradX)
-        (minVal, maxVal) = (np.min(gradX), np.max(gradX))
-        gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
-
-        grad = gradX + gradY
-        grad = cv2.threshold(grad, 100, 255, cv2.THRESH_BINARY)[1]
-        grad = cv2.morphologyEx(grad, cv2.MORPH_CLOSE, closingKernal)
-        #grad = cv2.adaptiveThreshold(src=grad, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY_INV, blockSize=3, C=5)
-
-        cv2.imshow("Gradient combined", grad)
-        cv2.imshow("Gradient X", gradX)
-        cv2.imshow("Gradient Y", gradY)
-        cv2.imshow("Blackhat", blackhat)
-
-    if mode == 2:
-        #TEST CANNY IMAGE
-        edges = cv2.Canny(grey, 50, 100, L2gradient=True)
-        #cv2.imshow("Canny", edges)
-
-        #TEST ADAPTIVE THRESHOLD
-        adaptiveThreshold = cv2.adaptiveThreshold(src=grey, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY_INV, blockSize=11, C=10)
-        #threshold = cv2.morphologyEx(adaptiveThreshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations=4)
-        #threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (2,2)), iterations=1)
-        threshold = cv2.erode(adaptiveThreshold, None, iterations=3)
-        threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, blackhatKernelY, iterations = 1)
-        #threshold = cv2.threshold(threshold, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        cv2.imshow("Adaptive Treshold", adaptiveThreshold)
-
-        #TEST HARRIS CORNERS
-        harris = cv2.cornerHarris(blurred, 2,3,0.04)
-        harrisRaw = np.zeros(harris.shape)
-        harrisRaw[harris>0.02*harris.max()]=255
-        #result is dilated for marking the corners, not important
-        harrisRaw = cv2.morphologyEx(harrisRaw, cv2.MORPH_CLOSE, blackhatKernelY, iterations = 2)
-        harrisRaw = cv2.morphologyEx(harrisRaw, cv2.MORPH_ERODE, cv2.getStructuringElement(cv2.MORPH_RECT, (2,2)), iterations=2)
-        #harrisRaw = cv2.dilate(harrisRaw, None, iterations=3)
-        #cv2.imshow("harris raw", harrisRaw)
-        # Threshold for an optimal value, it may vary depending on the image.
-        image[harrisRaw==255]=[0,0,255]
-        #image[harris>0.01*harris.max()]=[0,0,255]
-        #image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, blackhatKernelY, iterations = 1)
-        
-
-        threshHarris = threshold.copy()
-        threshHarris = harrisRaw + threshHarris
-        #cv2.imshow("treshhold+Harris", threshHarris)
-
-        # connected components, pixelwise and
-        contours, hierachy = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(image, contours, -1, (0,255,0))
-        cv2.imshow("Image", image)
-    
-    keycode = cv2.waitKey(20000)
 
 if __name__ == "__main__":
-    blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5
+    blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5te
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))#21,21
     mode = 1
+    if mode == 0:
+        saveTestImage()
     if mode == 1:
-        useCamera(blackhatKernelY, closingKernel)
+        useCamera(blackhatKernelY, closingKernel, debugLevel=1)
     if mode == 2:
-        image = testLiveImage()
-        comparePipelinese(image, blackhatKernelX, blackhatKernelY, closingKernel)
-    if mode == 3:
-        image = cv2.imread("test.png") #remember changing directory
-        comparePipelinese(image, blackhatKernelX, blackhatKernelY, closingKernel)
-    if mode == 4:
         image = cv2.imread("test.png")
-        image = segmentation(image, blackhatKernelY, closingKernel)
+        image = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
         cv2.imshow("Segmentation", image)
         cv2.waitKey(0)
-    if mode == 5:
-        saveTestImage()
+    
 
     
 
