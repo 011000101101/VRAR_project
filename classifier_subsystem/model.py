@@ -3,6 +3,8 @@ import os
 import cv2
 import pickle
 from sklearn import neighbors
+import os
+from utils.params import *
 from utils.image_augmenting import add_noise_greyscale
 
 

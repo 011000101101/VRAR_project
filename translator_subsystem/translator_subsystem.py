@@ -1,12 +1,15 @@
 import pickle
+import utils.stringutils as stringutils
+import os
+from utils.params import *
 
-with open("../bin_blobs/JMdict_e_hashtable.pkl", 'rb') as f:
+with open(os.path.join(ROOT_DIR, "bin_blobs/JMdict_e_hashtable.pkl"), 'rb') as f:
     word_dict = pickle.load(f)
 
-with open("../bin_blobs/kanjidic2_hashtable.pkl", 'rb') as f:
+with open(os.path.join(ROOT_DIR, "bin_blobs/kanjidic2_hashtable.pkl"), 'rb') as f:
     kanji_dict = pickle.load(f)
 
-with open("./masked_kanji.pkl", 'rb') as f:
+with open(os.path.join(ROOT_DIR, "translator_subsystem/masked_kanji.pkl"), 'rb') as f:
     masked_kanji_set = pickle.load(f)
 
 
@@ -19,7 +22,7 @@ def find_exact_match(keb: str):
 
 
 def translate_sequence_recursively(sequence: str, n_leading_kanji: int):
-    print("trying to translate {}".format(sequence))
+    # print("trying to translate {}".format(sequence))
     if sequence == "" or n_leading_kanji <= 0:
         return [(len(sequence), sequence, sequence)]
     current_len = len(sequence)
@@ -149,7 +152,39 @@ def translate_and_mask_sequence(sequence: str, n_leading_kanji: int):
         # reduce leading kanji count so it representes the number of leading kanji in the remaining sequence
         n_leading_lanji_tmp -= min(len(word[1]), n_leading_lanji_tmp)
         masked_sequence.append((word[0], word[1], masked_reading))
-    return used_chars, masked_sequence
+    return masked_sequence  # used_chars, masked_sequence
+
+
+def translate_and_mask_line(line: str):
+    current_sequence_start = 0
+    last_char_was_kana = False
+    translated_and_masked_sequences = []
+    number_of_kanji = 0
+    for i in range(len(line)):
+        if stringutils.is_kana(line[i]):
+            last_char_was_kana = True
+        else:
+            if last_char_was_kana:
+                translated_and_masked_sequences.append(
+                    (
+                        translate_and_mask_sequence(line[current_sequence_start:i], i-current_sequence_start),
+                        i - current_sequence_start,
+                        number_of_kanji
+                    )
+                )
+                number_of_kanji = 1
+            else:
+                number_of_kanji += 1
+            last_char_was_kana = False
+    translated_and_masked_sequences.append(
+        (
+            translate_and_mask_sequence(line[current_sequence_start:], len(line) - current_sequence_start),
+            len(line) - current_sequence_start,
+            number_of_kanji
+        )
+    )
+    return translated_and_masked_sequences
+
 
 
 def overwrite_masked_kanji_set(new_set: set):
@@ -159,7 +194,7 @@ def overwrite_masked_kanji_set(new_set: set):
 
 def reset_masked_kanji_set():
     global masked_kanji_set
-    with open("./masked_kanji.pkl", 'rb') as f:
+    with open(os.path.join(ROOT_DIR, "translator_subsystem/masked_kanji.pkl"), 'rb') as f:
         masked_kanji_set = pickle.load(f)
 
 

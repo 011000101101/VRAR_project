@@ -4,16 +4,31 @@ import numpy as np
 import cv2
 
 
-def square_sample(sample: np.ndarray) -> np.ndarray:
-    w, h = sample.shape
+def square_sample(sample: np.ndarray, location: tuple) -> (np.ndarray, tuple):
+    (x, y, w, h) = location
     new_size = max(w, h)
     new_sample = np.full((new_size, new_size), 255, dtype=sample.dtype)
-    new_sample[int((new_size-w)/2):int((new_size-w)/2+w), int((new_size-h)/2):int((new_size-h)/2+h)] = sample
-    return new_sample
+    new_sample[int((new_size-h)/2):int((new_size-h)/2+h), int((new_size-w)/2):int((new_size-w)/2+w)] = sample
+    x = x - int((new_size - w)/2)
+    y = y - int((new_size - h)/2)
+    w = h = new_size
+    return new_sample, (x, y, w, h)
 
 
 def unify_sample_size(sample: np.ndarray) -> np.ndarray:
     return cv2.resize(sample, (SAMPLE_IMAGE_SIZE, SAMPLE_IMAGE_SIZE))
+
+
+def filter_roi_list(rois: list):
+    return [
+        (image, (x, y, w, h))
+        for
+        image, (x, y, w, h)
+        in
+        rois
+        if
+        15 < w < 30 and 15 < h < 30
+    ]
 
 
 def preprocess_roi_list(rois: list):
@@ -24,7 +39,7 @@ def preprocess_roi_list(rois: list):
         while vertical_stacking_factor > 1.75:
             split_rois.append(
                 (
-                    image[y:y + w, x:x + w],
+                    image[:w, :],
                     (x, y, w, w)
                 )
             )
@@ -33,13 +48,13 @@ def preprocess_roi_list(rois: list):
             h = h - w
         split_rois.append(
             (
-                image[y:y + h, x:x + w],
+                image[:h, :],
                 (x, y, w, h)
             )
         )
 
     processed_rois = [
-        (unify_sample_size(square_sample(image)), location)
+        square_sample(image, location)
         for
         image, location
         in
@@ -49,6 +64,16 @@ def preprocess_roi_list(rois: list):
     return processed_rois
 
 
+def resize_roi_list(rois: list):
+    return [
+        unify_sample_size(image)
+        for
+        image, location
+        in
+        rois
+    ]
+
+
 if __name__ == "__main__":
 
     sample = np.zeros((30, 15))
@@ -56,7 +81,7 @@ if __name__ == "__main__":
     cv2.waitKey()
     cv2.destroyAllWindows()
 
-    square_sample = square_sample(sample)
+    square_sample, _ = square_sample(sample, (0, 0, 30, 15))
     cv2.imshow("square", square_sample)
     cv2.waitKey()
     cv2.destroyAllWindows()

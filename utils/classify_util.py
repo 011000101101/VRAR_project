@@ -1,10 +1,12 @@
 import pickle
 import numpy as np
+import os
 from sklearn.model_selection import train_test_split
+from utils.params import *
 
 index_dict = dict()
 
-with open("../bin_blobs/kanji_list.pkl", 'rb') as f:
+with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_list.pkl"), 'rb') as f:
     kanji_list = pickle.load(f)
 for i in range(len(kanji_list)):
     index_dict[kanji_list[i]] = i

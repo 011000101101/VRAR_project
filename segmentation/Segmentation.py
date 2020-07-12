@@ -3,10 +3,10 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-def retrieve_current_frame(image):
+def retrieve_current_frame(image, debugLevel = 0):
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel)
+    (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=debugLevel)
     rois = []
     for subsequence in sequences:
         column = []

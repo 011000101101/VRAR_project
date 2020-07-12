@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 import pickle
+import os
+from utils.params import *
 
 
 def skip_inflection(keb: str, reb: str):
@@ -174,13 +176,13 @@ def entry_list_to_map(entries_in: list):
 
 
 def convert():
-    tree = ET.parse('../resources/JMdict/JMdict_e')
+    tree = ET.parse(os.path.join(ROOT_DIR, "resources/JMdict/JMdict_e"))
 
     entries = tree.findall("entry/k_ele/...")
 
     word_dict_map = entry_list_to_map(entries)
 
-    with open("../bin_blobs/JMdict_e_hashtable.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/JMdict_e_hashtable.pkl"), 'wb') as f:
         pickle.dump(word_dict_map, f, pickle.HIGHEST_PROTOCOL)
 
 

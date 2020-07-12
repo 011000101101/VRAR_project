@@ -1,5 +1,8 @@
 import xml.etree.ElementTree as ET
 import pickle
+import os
+from utils.params import *
+import utils.stringutils as stringutils
 
 
 def hiraganify_single_on_yomi(on_yomi: str):
@@ -72,28 +75,11 @@ def cut_non_hiragana_chars(kun_yomi: str):
             hiragana_only += 'ー'
             continue
 
-        # convert utf-9 string of single char to byte array holding its utf-8 codepoint
-        char_bytes = list(char.encode("utf-8"))
-
-        # skip non-hiragana chars
-        if char_bytes[0] != 227:
+        if not stringutils.is_kana(char):
             continue
 
-        # skip non-katakana chars
-        if char_bytes[1] == 129:  # 82
-            if not (129 <= char_bytes[2] <= 191):
-                continue  # skip non-katakana chars
-        elif char_bytes[1] == 130:
-            if not (128 <= char_bytes[2] <= 150):
-                continue  # skip non-katakana chars
-        else:
-            continue  # skip non-katakana chars
-
-        # convert byte array holding utf-8 codepoint of single char back to utf-8 string
-        new_char = bytes(char_bytes).decode("utf-8")
-
         # concatenate the characters
-        hiragana_only += new_char
+        hiragana_only += char
 
     return hiragana_only
 
@@ -121,13 +107,13 @@ def entry_list_to_map(entries_in: list):
 
 
 def convert():
-    tree = ET.parse('../resources/kanjidic2/kanjidic2.xml')
+    tree = ET.parse(os.path.join(ROOT_DIR, "resources/kanjidic2/kanjidic2.xml"))
 
     entries = tree.findall("character")
 
     kanji_dict_map = entry_list_to_map(entries)
 
-    with open("../bin_blobs/kanjidic2_hashtable.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanjidic2_hashtable.pkl"), 'wb') as f:
         pickle.dump(kanji_dict_map, f, pickle.HIGHEST_PROTOCOL)
 
 

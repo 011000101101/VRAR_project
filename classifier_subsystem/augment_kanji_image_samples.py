@@ -3,6 +3,8 @@ import os
 import cv2
 import pickle
 from utils.image_augmenting import add_noise_greyscale
+import os
+from utils.params import *
 
 
 def augment(image_samples):
@@ -50,16 +52,16 @@ def augment(image_samples):
 if __name__ == "__main__":
 
     # load clean image samples from disk
-    with open("../bin_blobs/kanji_image_samples.pkl", 'rb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_image_samples.pkl"), 'rb') as f:
         image_samples = pickle.load(f)
 
     # augment
     samples, clean_samples = augment(image_samples)
 
     # save augmented image samples to disk
-    with open("../bin_blobs/kanji_image_samples_augmentes.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_image_samples_augmentes.pkl"), 'wb') as f:
         pickle.dump(samples, f, pickle.HIGHEST_PROTOCOL)
 
     # save augmented image samples to disk
-    with open("../bin_blobs/kanji_image_samples_clean.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_image_samples_clean.pkl"), 'wb') as f:
         pickle.dump(clean_samples, f, pickle.HIGHEST_PROTOCOL)

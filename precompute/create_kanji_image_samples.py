@@ -4,6 +4,8 @@ import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 import cv2
 import pickle
+import os
+from utils.params import *
 
 # specify the font size in pt, this has to be in relation with image size in pixels
 FONT_SIZE_PT = 48
@@ -42,13 +44,13 @@ def create_samples():
     """
 
     # load a list of all kanji to be rendered from the disk
-    with open("../bin_blobs/kanji_list.pkl", 'rb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_list.pkl"), 'rb') as f:
         kanji_list = pickle.load(f)
 
     # load an image of a faulty rendering to filter out unsupported kanji-font-combinations from disk
     # kanji unsupported by a certain font usually don't render at all, leaving an empty image, but sometimes they render
     # as a specific rectangle, identical to the image loaded here
-    with open("../resources/fonts/kanji_image_faulty_rendering.pkl", 'rb') as f:
+    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_rendering.pkl"), 'rb') as f:
         faulty_img = pickle.load(f)
 
     # initialize dictionary to hold image samples indexed by kanji
@@ -58,7 +60,7 @@ def create_samples():
     fonts = []
     for font_path in font_paths:
         # complete font path
-        font_path_absolute = "../resources/fonts/{}".format(font_path[1])
+        font_path_absolute = os.path.join(ROOT_DIR, "resources/fonts/{}".format(font_path[1]))
         # load font
         font = ImageFont.truetype(font_path_absolute, FONT_SIZE_PT)
         fonts.append((font_path[0], font))
@@ -98,7 +100,7 @@ def create_samples():
         image_samples[kanji] = image_samples_tmp
 
     # save on disk
-    with open("../bin_blobs/kanji_image_samples.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_image_samples.pkl"), 'wb') as f:
         pickle.dump(image_samples, f, pickle.HIGHEST_PROTOCOL)
 
 

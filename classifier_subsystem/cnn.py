@@ -22,6 +22,8 @@ from datetime import timedelta
 import pickle as pkl
 from hyperopt import hp, fmin, tpe, STATUS_OK, Trials
 import cv2
+import os
+from utils.params import *
 
 
 import utils.classify_util as classify_utils
@@ -93,7 +95,7 @@ def train_model( X_train, X_val, y_train, y_val):
 
     model.fit(x=X_train, y=y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(X_val, y_val))
 
-    model.save("./tf_models/")
+    model.save(os.path.join(ROOT_DIR, "classifier_subsystem/tf_models/"))
 
     return model
 
@@ -122,7 +124,7 @@ def evaluate_model(model, X_val, y_val):
 
 
 def load_model():
-    return tf.keras.models.load_model("./tf_models/")
+    return tf.keras.models.load_model(os.path.join(ROOT_DIR, "classifier_subsystem/tf_models/"))
 
 
 if __name__ == "__main__":

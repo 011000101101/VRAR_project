@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 import pickle
+import os
+from utils.params import *
 
 
 def convert():
@@ -10,7 +12,7 @@ def convert():
     """
 
     # load kanjidic2 file as an element tree
-    tree = ET.parse('../resources/kanjidic2/kanjidic2.xml')
+    tree = ET.parse(os.path.join(ROOT_DIR, "resources/kanjidic2/kanjidic2.xml"))
 
     # find all kanji entries
     entries = tree.findall("character")
@@ -29,7 +31,7 @@ def convert():
     print(len(kanji_list))
 
     # save on disk
-    with open("../bin_blobs/kanji_list.pkl", 'wb') as f:
+    with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_list.pkl"), 'wb') as f:
         pickle.dump(kanji_list, f, pickle.HIGHEST_PROTOCOL)
 
 
