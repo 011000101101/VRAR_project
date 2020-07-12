@@ -217,7 +217,10 @@ def segmentation(image, blackhatKernel, closingKernel):
 
     # TODO
 
-    roi_widths = [w for (x, y, w, h) in rois]
+    roi_widths = [w if w < 50 else 0 for (x, y, w, h) in rois]
+
+    plt.hist(roi_widths)
+    plt.show()
 
     middle_width = 25  # np.mean(roi_widths)
 

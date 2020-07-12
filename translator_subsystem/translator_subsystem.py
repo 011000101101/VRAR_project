@@ -1,12 +1,12 @@
 import pickle
 
-with open("JMdict_e_hashtable.pkl", 'rb') as f:
+with open("../bin_blobs/JMdict_e_hashtable.pkl", 'rb') as f:
     word_dict = pickle.load(f)
 
-with open("kanjidic2_hashtable.pkl", 'rb') as f:
+with open("../bin_blobs/kanjidic2_hashtable.pkl", 'rb') as f:
     kanji_dict = pickle.load(f)
 
-with open("masked_kanji.pkl", 'rb') as f:
+with open("./masked_kanji.pkl", 'rb') as f:
     masked_kanji_set = pickle.load(f)
 
 
@@ -159,7 +159,7 @@ def overwrite_masked_kanji_set(new_set: set):
 
 def reset_masked_kanji_set():
     global masked_kanji_set
-    with open("masked_kanji.pkl", 'rb') as f:
+    with open("./masked_kanji.pkl", 'rb') as f:
         masked_kanji_set = pickle.load(f)
 
 

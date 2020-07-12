@@ -9,3 +9,4 @@ __pycache__
 media
 # no trained models, as they can be very big (e.g. knn > 4GB)
 classifier_subsystem/trained_*.pkl
+classifier_subsystem/tf_models
