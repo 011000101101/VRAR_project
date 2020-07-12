@@ -1,6 +1,36 @@
 import cv2
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+
+def retrieve_current_frame(image):
+    blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
+    closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel)
+    rois = []
+    for subsequence in sequences:
+        column = []
+        for box in subsequence:
+            (x,y,w,h) = box
+            column.append((grey[y:y+h,x:x+w], box))
+        rois.append(column)
+    return (image, rois)
+
+def start_camera():
+    global capture
+    capture = cv2.VideoCapture(0)
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
+
+def get_camera_image():
+    global capture
+    success = False
+    while not success:
+        success, image = capture.read()
+    return image
+
+def read_image(filepath):
+    return cv2.imread(filepath)
+
 
 def downsample(image, height, inter = cv2.INTER_AREA):
     (originalHeight, originalWidth) = image.shape[:2]
@@ -25,13 +55,20 @@ def saveTestImage():
             cv2.imwrite(filename, image)
             break
 
-def testLiveImage():
+def getLiveImage():
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
     success = False
     while not success:
         success , image = capture.read()
     return image
+
+def histogram(rois):
+    roi_widths = [w if w < 50 else 0 for (x, y, w, h) in rois]
+    roi_heights = [h if h < 50 else 0 for (x, y, w, h) in rois]
+    plt.hist(roi_widths)
+    plt.hist(roi_heights)
+    plt.show()
 
 def sortCriteriaBoundingBoxes(box):
     return box[0]
@@ -94,7 +131,7 @@ def filterRoisByKanjiContoursColumnwise(possibleRois, grey):
             sequences = []
             subsequence = []
             consecutive = False
-            for i in range(len(boundingBoxes)-2):
+            for i in range(len(boundingBoxes)-1):
                 if( abs(boundingBoxes[i][0] -boundingBoxes[i+1][0]) < diff ):
                     subsequence.append(boundingBoxes[i])
                     consecutive = True
@@ -118,20 +155,20 @@ def filterRoisByKanjiContoursColumnwise(possibleRois, grey):
     return rois
 
 def filterRoisByKanjiContours(possibleRois, grey):
+    debug = False
     (imageHeight, imageWidth) = grey.shape[:2]
     edges = cv2.Canny(grey, 100, 200, L2gradient=True)
     edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT ,(3,3)))
-    cv2.imshow("edges", edges)
-    rois = []
-    debug = False
+    if debug:
+        cv2.imshow("edges", edges)
+    sequences = []
+    
     for roi in possibleRois:
         (x,y,w,h) = roi
-        #filter contour of whole image by assuming a contour with full height must be that one
-        if h == imageHeight:
-            continue
         roiImage = edges[y:y+h,x:x+w]
         contoursRoi, hierachyRoi = cv2.findContours(roiImage, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=(x,y))
         boundingBoxes = [cv2.boundingRect(contour) for contour in contoursRoi]
+        boundingBoxes = filterRoisBySize(boundingBoxes,imageHeight,imageWidth)
 
         if debug:
             for box in boundingBoxes:
@@ -142,32 +179,30 @@ def filterRoisByKanjiContours(possibleRois, grey):
         if len(boundingBoxes) > 0:
             boundingBoxes.sort(key=sortCriteriaBoundingBoxes)
             diff = 3
-            sequences = []
             subsequence = []
-            consecutive = False
-            for i in range(len(boundingBoxes)-2):
-                if( abs(boundingBoxes[i][0] -boundingBoxes[i+1][0]) < diff ):
+            for i in range(len(boundingBoxes)-1):
+                (x,y,w,h) = boundingBoxes[i]
+                #split boxes to big
+                if h > 1.75 * w:
+                    splitFactor = round(float(h)/float(w))
+                    newHeight = round(h/splitFactor)
+                    for j in range(splitFactor):
+                        subsequence.append((x,y+j*newHeight,w,newHeight))
+                else:    
                     subsequence.append(boundingBoxes[i])
-                    consecutive = True
-                else:
-                    if consecutive:
-                        subsequence.append(boundingBoxes[i])
-                        consecutive = False
+                #detect column end
+                if( abs(x -boundingBoxes[i+1][0]) > diff ):
+                    #to filter false boxes we are not allowing single characters
+                    if len(subsequence)>1:
                         sequences.append(subsequence)
-                        subsequence = []
+                    subsequence =[]
+
             #Handle last element
-            if consecutive:
-                subsequence.append(boundingBoxes[-1])
+            subsequence.append(boundingBoxes[-1])
+            if(len(subsequence)>1):
                 sequences.append(subsequence)
-            else:
-                last = [boundingBoxes[-1]]
-                sequences.append(last)
-            for subsequence in sequences:
-                if len(subsequence)>2:
-                    for rect in subsequence:
-                        rois.append(rect)
-        
-    return rois
+            
+    return sequences
 
 def resizeRois(possibleRois, currentHeight, wantedHeight):
     scaleFactor = wantedHeight / float(currentHeight)
@@ -223,19 +258,23 @@ def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
 
     #rois = filterRoisByKanjiContoursColumnwise(possibleRois, grey)
     rois = filterRoisByKanjiContours(possibleRois, grey)
-    rois = filterRoisBySize(rois, imageHeight, imageWidth)
+    if debugLevel>=3:
+        histogram(rois)
 
     if debugLevel>=1:
-        for roi in rois:
-            (x, y, w, h) = roi
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
-        print("rois: " + str(len(rois)))
+        numberRois = 0
+        for column in rois:
+            for roi in column:
+                (x, y, w, h) = roi
+                cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
+                numberRois = numberRois +1
+        print("rois: " + str(numberRois))
     if debugLevel>=2:
         for roi in possibleRois:
             (x, y, w, h) = roi
             cv2.rectangle(image, (x, y), (x+w, y+h), (255,0,0))
 
-    return image
+    return (image, grey, rois)
 
 def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
     capture = cv2.VideoCapture(0)
@@ -245,7 +284,7 @@ def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
         if not success:
             continue
         e1 = cv2.getTickCount()
-        image = segmentation(image, blackhatKernel, closingKernel, debugLevel)
+        (image, grey, rois) = segmentation(image, blackhatKernel, closingKernel, debugLevel)
         e2 = cv2.getTickCount()
         time = (e2 - e1)/ cv2.getTickFrequency()
         print("last segmentation time:" + str(time))
@@ -254,22 +293,32 @@ def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
             break
 
 
-
 if __name__ == "__main__":
     blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5te
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))#21,21
-    mode = 1
+    mode = 3
     if mode == 0:
         saveTestImage()
     if mode == 1:
         useCamera(blackhatKernelY, closingKernel, debugLevel=1)
     if mode == 2:
         image = cv2.imread("test.png")
-        image = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
+        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
         cv2.imshow("Segmentation", image)
         cv2.waitKey(0)
-    
+    if mode == 3:
+        start_camera()
+        while True:
+            image = get_camera_image()
+            (image, rois) = retrieve_current_frame(image)
+            for column  in  rois:
+                for thingy in column:
+                    (roi,(x,y,w,h)) = thingy
+                    cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
+            cv2.imshow("Test", image)
+            if cv2.waitKey(25) == 27:
+                break
 
     
 
