@@ -28,9 +28,9 @@ from utils.params import *
 
 import utils.classify_util as classify_utils
 
-NUMBER_OF_CLASSES = 2998
+NUMBER_OF_CLASSES = 3166
 BATCH_SIZE = 100
-EPOCHS = 10
+EPOCHS = 20
 
 
 def train_model( X_train, X_val, y_train, y_val):
@@ -74,14 +74,14 @@ def train_model( X_train, X_val, y_train, y_val):
 
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(
-        2000
+        1000
     ))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.PReLU())
     model.add(tf.keras.layers.Dropout(0.5))
 
     model.add(tf.keras.layers.Dense(
-        2000
+        1000
     ))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.PReLU())
@@ -129,6 +129,6 @@ def load_model():
 
 if __name__ == "__main__":
     X_train, X_val, y_train, y_val = classify_utils.load_train_data()
-    # model = train_model( X_train, X_val, y_train, y_val)
-    model = load_model()
+    model = train_model( X_train, X_val, y_train, y_val)
+    # model = load_model()
     evaluate_model(model, X_val, y_val)

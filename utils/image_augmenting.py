@@ -20,16 +20,16 @@ def add_noise_greyscale(image: np.ndarray, noise_typ: str):
     """
     if noise_typ == "gauss":
         shape = image.shape
-        mean = 0.02
-        var = 0.2
+        mean = 0.03
+        var = 0.3
         sigma = var**0.5
         gauss = np.random.normal(mean, sigma, shape)
         gauss = gauss.reshape(shape)
         noisy = image + gauss
-        return noisy.clip(0, 255)
+        return noisy.clip(0, 255).astype("uint8")
     elif noise_typ == "s_p":
         s_vs_p = 0.5
-        amount = 0.002  # 0.004
+        amount = 0.02  # 0.004
         out = np.copy(image)
         # Salt mode
         num_salt = np.ceil(amount * image.size * s_vs_p)
@@ -40,14 +40,14 @@ def add_noise_greyscale(image: np.ndarray, noise_typ: str):
         num_pepper = np.ceil(amount * image.size * (1. - s_vs_p))
         coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape]
         out[tuple(coords)] = 0
-        return out.clip(0, 255)
+        return out.clip(0, 255).astype("uint8")
     elif noise_typ == "speckle":
         w, h = image.shape
         gauss = np.random.randn(w, h)
         gauss = gauss.reshape((w, h))
         gauss = gauss / 3
         noisy = image + image * gauss
-        return noisy.clip(0, 255)
+        return noisy.clip(0, 255).astype("uint8")
 
 
 def augment_samples(samples, readings):

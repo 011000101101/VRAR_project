@@ -7,11 +7,6 @@ import pickle
 import os
 from utils.params import *
 
-# specify the font size in pt, this has to be in relation with image size in pixels
-FONT_SIZE_PT = 48
-# specify image pixel count (horizontal and vertical, square image)
-IMAGE_SIZE_PX = 50
-
 # specify names and paths of available fonts
 font_paths = [
     ("komorebi_gothic", "MODI_komorebi-gothic_2018_0501/komorebi-gothic.ttf"),
@@ -32,7 +27,7 @@ font_paths = [
 b, g, r, a = 0, 0, 0, 0  # totally black
 
 # specify empty white image, which is computed once and then copied multiple times for performance reasons
-empty_img = np.ones((IMAGE_SIZE_PX,IMAGE_SIZE_PX,3),np.uint8)
+empty_img = np.ones((SAMPLE_IMAGE_SIZE,SAMPLE_IMAGE_SIZE,3),np.uint8)
 empty_img *= 255  # pure white background
 
 
@@ -62,7 +57,7 @@ def create_samples():
         # complete font path
         font_path_absolute = os.path.join(ROOT_DIR, "resources/fonts/{}".format(font_path[1]))
         # load font
-        font = ImageFont.truetype(font_path_absolute, FONT_SIZE_PT)
+        font = ImageFont.truetype(font_path_absolute, SAMPLE_IMAGE_SIZE)
         fonts.append((font_path[0], font))
 
     # render each kanji...
@@ -73,25 +68,18 @@ def create_samples():
         # ...with each font
         for font in fonts:
 
-            # create empty white image
-            img_tmp = empty_img.copy()
-            # convert to correct format
-            img_pil = Image.fromarray(img_tmp)
-            # render single kanji by putting text onto the image
-            draw = ImageDraw.Draw(img_pil)
-            draw.text((0, 0), kanji, font=font[1], fill=(b, g, r, a))
-            # convert image back to numpy array
-            img = np.array(img_pil)
+            img = create_sample(kanji, font)
 
             # filter out not or faultily rendered kanji-font-combinations
             if (img == empty_img).all() or (img == faulty_img).all():
                 # print("character not supported: {}, font {}".format(kanji, font[0]))
                 pass
             else:
-                # cv2.imshow("asdf", img);cv2.waitKey();cv2.destroyAllWindows()
                 # convert image to greyscale to save space (semantically it is already in greyscale anyways, so just
                 # use different encodiing)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+                # cv2.imshow("asdf", img);cv2.waitKey();cv2.destroyAllWindows()
 
                 # accumulate rendered images
                 image_samples_tmp.append((font[0], img))
@@ -104,5 +92,26 @@ def create_samples():
         pickle.dump(image_samples, f, pickle.HIGHEST_PROTOCOL)
 
 
+def create_sample(kanji: str, font):
+    # create empty white image
+    img_tmp = empty_img.copy()
+    # convert to correct format
+    img_pil = Image.fromarray(img_tmp)
+    # render single kanji by putting text onto the image
+    draw = ImageDraw.Draw(img_pil)
+    draw.text((0, 0), kanji, font=font[1], fill=(b, g, r, a))
+    # convert image back to numpy array
+    img = np.array(img_pil)
+    return img
+
+
+def create_faulty_image_sample():
+    font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/NikkyouSans/NikkyouSans-B6aV.ttf"), SAMPLE_IMAGE_SIZE)
+    img = create_sample("阿", ("faulty", font))
+    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_rendering.pkl"), 'wb') as f:
+        pickle.dump(img, f, pickle.HIGHEST_PROTOCOL)
+
+
 if __name__ == "__main__":
+    create_faulty_image_sample()
     create_samples()

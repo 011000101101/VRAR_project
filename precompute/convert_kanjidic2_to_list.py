@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import pickle
 import os
 from utils.params import *
+import numpy as np
 
 
 def convert():
@@ -29,6 +30,49 @@ def convert():
     ]
 
     print(len(kanji_list))
+    return kanji_list
+
+
+def add_kana(kanji_list: list) -> list:
+
+    char_bytes = np.empty(3, "uint8")
+
+    char_bytes[0] = 227
+
+    char_bytes[1] = 129  # 81
+
+    for i in range(129, 192):  # 81 - bf
+
+        char_bytes[2] = i
+
+        kanji_list.append(bytes(char_bytes).decode("utf-8"))
+
+    char_bytes[1] = 130
+
+    for i in range(128, 149):  # 80 - 96
+
+        char_bytes[2] = i
+
+        kanji_list.append(bytes(char_bytes).decode("utf-8"))
+
+    for i in range(161, 192):  # 99 - bf
+
+        char_bytes[2] = i
+
+        kanji_list.append(bytes(char_bytes).decode("utf-8"))
+
+    char_bytes[1] = 131
+
+    for i in range(128, 181):  # 80 - bf
+
+        char_bytes[2] = i
+
+        kanji_list.append(bytes(char_bytes).decode("utf-8"))
+
+    return kanji_list
+
+
+def save_kanji_list(kanji_list: list):
 
     # save on disk
     with open(os.path.join(ROOT_DIR, "bin_blobs/kanji_list.pkl"), 'wb') as f:
@@ -36,4 +80,6 @@ def convert():
 
 
 if __name__ == "__main__":
-    convert()
+    kanji_list_tmp = convert()
+    kanji_list_tmp = add_kana(kanji_list_tmp)
+    save_kanji_list(kanji_list_tmp)

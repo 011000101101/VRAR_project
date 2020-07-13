@@ -7,7 +7,7 @@ import os
 """
 width and height of image samples in pixels
 """
-SAMPLE_IMAGE_SIZE = 50
+SAMPLE_IMAGE_SIZE = 25
 
 """
 project root path
