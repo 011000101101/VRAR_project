@@ -70,8 +70,11 @@ def histogram(rois):
     plt.hist(roi_heights)
     plt.show()
 
-def sortCriteriaBoundingBoxes(box):
+def sortCriteriaPositionX(box):
     return box[0]
+
+def sortCriteriaPositionY(box):
+    return box[1]
 
 def findBoundingRectangle(RectangleList, imageHeight, imageWidth):
     x_min = imageWidth - 1
@@ -126,7 +129,7 @@ def filterRoisByKanjiContoursColumnwise(possibleRois, grey):
 
         #filter bounding boxes that are vertically aligned
         if len(boundingBoxes) > 0:
-            boundingBoxes.sort(key=sortCriteriaBoundingBoxes)
+            boundingBoxes.sort(key=sortCriteriaPositionX)
             diff = 10
             sequences = []
             subsequence = []
@@ -177,7 +180,7 @@ def filterRoisByKanjiContours(possibleRois, grey):
 
         #filter bounding boxes that are vertically aligned
         if len(boundingBoxes) > 0:
-            boundingBoxes.sort(key=sortCriteriaBoundingBoxes)
+            boundingBoxes.sort(key=sortCriteriaPositionX)
             diff = 3
             subsequence = []
             for i in range(len(boundingBoxes)-1):
@@ -194,12 +197,15 @@ def filterRoisByKanjiContours(possibleRois, grey):
                 if( abs(x -boundingBoxes[i+1][0]) > diff ):
                     #to filter false boxes we are not allowing single characters
                     if len(subsequence)>1:
+                        #sort characters in one column
+                        subsequence.sort(key=sortCriteriaPositionY)
                         sequences.append(subsequence)
                     subsequence =[]
 
             #Handle last element
             subsequence.append(boundingBoxes[-1])
-            if(len(subsequence)>1):
+            if len(subsequence)>1:
+                subsequence.sort(key=sortCriteriaPositionY)
                 sequences.append(subsequence)
             
     return sequences
