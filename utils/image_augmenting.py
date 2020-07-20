@@ -55,7 +55,6 @@ def augment_samples(samples, readings):
     augmented_segments = []
     for segment in readings:
         words, segment_len, n_leading_kanji = segment
-        print(words)
         augmented_segments.append(
             augment_segment(
                 samples[current_sample_index:current_sample_index+segment_len],
@@ -110,11 +109,9 @@ def augment_word(samples: list, reb: str):
     img_pil = Image.fromarray(new_sample[:, int(w/2):])
     # render single kanji by putting text onto the image
     draw = ImageDraw.Draw(img_pil)
-    augmentation_font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/MODI_komorebi-gothic_2018_0501/komorebi-gothic.ttf"), font_size_pt)
+    augmentation_font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/Xano-Mincho/XANO-mincho-U32.ttf"), font_size_pt)
     y_tmp = int((w-font_size_px*len(reb))/2)
-    print("reb: " + reb)
     for char in reb:
-        print(char)
         draw.text((0, y_tmp), char, font=augmentation_font, fill=0)  # TODO center in segment
         y_tmp += font_size_px
     # convert image back to numpy array and merge into augmented image

@@ -45,8 +45,8 @@ def create_samples():
     # load an image of a faulty rendering to filter out unsupported kanji-font-combinations from disk
     # kanji unsupported by a certain font usually don't render at all, leaving an empty image, but sometimes they render
     # as a specific rectangle, identical to the image loaded here
-    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_rendering.pkl"), 'rb') as f:
-        faulty_img = pickle.load(f)
+    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_renderings.pkl"), 'rb') as f:
+        faulty_imgs = pickle.load(f)
 
     # initialize dictionary to hold image samples indexed by kanji
     image_samples = dict()
@@ -71,7 +71,7 @@ def create_samples():
             img = create_sample(kanji, font)
 
             # filter out not or faultily rendered kanji-font-combinations
-            if (img == empty_img).all() or (img == faulty_img).all():
+            if (img == empty_img).all() or len([1 for faulty_img in faulty_imgs if (img == faulty_img).all()]) > 0:  # (img == faulty_img).all():
                 # print("character not supported: {}, font {}".format(kanji, font[0]))
                 pass
             else:
@@ -105,13 +105,21 @@ def create_sample(kanji: str, font):
     return img
 
 
-def create_faulty_image_sample():
+def create_faulty_image_samples():
+    faulty_samples = []
+
     font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/NikkyouSans/NikkyouSans-B6aV.ttf"), SAMPLE_IMAGE_SIZE)
     img = create_sample("阿", ("faulty", font))
-    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_rendering.pkl"), 'wb') as f:
-        pickle.dump(img, f, pickle.HIGHEST_PROTOCOL)
+    faulty_samples.append(img)
+
+    font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/MODI_komorebi-gothic_2018_0501/komorebi-gothic.ttf"), SAMPLE_IMAGE_SIZE)
+    img = create_sample("黃", ("faulty", font))
+    faulty_samples.append(img)
+
+    with open(os.path.join(ROOT_DIR, "resources/fonts/kanji_image_faulty_renderings.pkl"), 'wb') as f:
+        pickle.dump(faulty_samples, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
-    create_faulty_image_sample()
+    create_faulty_image_samples()
     create_samples()

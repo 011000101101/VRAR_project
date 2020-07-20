@@ -24,6 +24,7 @@ from hyperopt import hp, fmin, tpe, STATUS_OK, Trials
 import cv2
 import os
 from utils.params import *
+import sys
 
 
 import utils.classify_util as classify_utils
@@ -31,6 +32,19 @@ import utils.classify_util as classify_utils
 NUMBER_OF_CLASSES = 3166
 BATCH_SIZE = 100
 EPOCHS = 20
+INITIAL_ADAM_LEARNING_RATE = 0.01
+# If you don't mind long training times, make the below two values larger
+MAXIMUM_NUMBER_OF_EPOCHS = 50
+EARLY_STOPPING_PATIENCE = 5
+
+
+class Flush(tf.keras.callbacks.Callback):
+
+    def on_epoch_end(self, epoch, logs={}):
+
+        sys.stdout.flush()
+
+        sys.stderr.flush()
 
 
 def train_model( X_train, X_val, y_train, y_val):
@@ -74,14 +88,14 @@ def train_model( X_train, X_val, y_train, y_val):
 
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(
-        1000
+        2000
     ))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.PReLU())
     model.add(tf.keras.layers.Dropout(0.5))
 
     model.add(tf.keras.layers.Dense(
-        1000
+        2000
     ))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.PReLU())
@@ -91,9 +105,69 @@ def train_model( X_train, X_val, y_train, y_val):
 
     model.add(tf.keras.layers.Activation('softmax'))
 
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    adam = tf.keras.optimizers.Adam(lr=INITIAL_ADAM_LEARNING_RATE)
 
-    model.fit(x=X_train, y=y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(X_val, y_val))
+    model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+
+    # We will reinitialize the model with these
+    # weights later, when we retrain the model
+    # on full dataset after determining the stopping
+    # times using the validation set.
+    saved_initial_weights = model.get_weights()
+
+    stopping_times = []
+
+    for i in range(2):
+        results = model.fit(
+
+            x=X_train, y=y_train, batch_size=BATCH_SIZE, epochs=MAXIMUM_NUMBER_OF_EPOCHS, validation_data=(X_val, y_val),
+
+            callbacks=[
+
+                tf.keras.callbacks.EarlyStopping(
+
+                    monitor='val_loss', patience=EARLY_STOPPING_PATIENCE,
+
+                    verbose=2, mode='auto'),
+
+                Flush()]
+
+        )
+
+        stopping_times.append(len(results.epoch))
+
+        print("stopped after ", stopping_times[-1], "epochs")
+
+        # Divide the learning rate by 10
+
+        tf.keras.backend.set_value(adam.lr, 0.1 * tf.keras.backend.get_value(adam.lr))
+
+    # Now we will retrain the model again keeping in mind the stopping times that
+
+    # we got by the early stopping procedure
+
+    adam = tf.keras.optimizers.Adam(lr=INITIAL_ADAM_LEARNING_RATE)
+
+    model.compile(
+
+        loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+
+    model.set_weights(saved_initial_weights)
+
+    for i in range(2):
+        results = model.fit(
+
+            x=np.concatenate((X_train, X_val)), y=np.concatenate((y_train, y_val)), batch_size=BATCH_SIZE, epochs=stopping_times[i],
+
+            callbacks=[Flush()]
+
+        )
+
+        # Divide the learning rate by 10
+
+        tf.keras.backend.set_value(adam.lr, 0.1 * tf.keras.backend.get_value(adam.lr))
+
+    # model.fit(x=X_train, y=y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(X_val, y_val))
 
     model.save(os.path.join(ROOT_DIR, "classifier_subsystem/tf_models/"))
 

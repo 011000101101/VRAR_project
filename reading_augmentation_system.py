@@ -4,6 +4,7 @@ import translator_subsystem.translator_subsystem as translator_subsystem
 import utils.preprocess as pp
 import utils.classify_util as classify_utils
 import utils.image_augmenting as augment_utils
+import GUI.detect_kanji as gui_module
 
 import numpy as np
 import cv2
@@ -15,32 +16,18 @@ def show_rois(image_in: np.ndarray, rois_list_in: list):
         for roi in column:
             _, (x, y, w, h) = roi
             cv2.rectangle(image_in, (x, y), (x + w, y + h), (0, 255, 0))
-    cv2.imshow("rois", image_in)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
+    return image_in
 
 
 def compute_rois(image_in: np.ndarray) -> (np.ndarray, list):
     return segmentation_subsystem.retrieve_current_frame(image_in)
 
 
-def filter_rois_list(rois_list_in: list) -> list:
+def filter_rois_list(rois_list_in: list, roi_size: int) -> list:
     # filter small and large rois  # TODO
-    rois_list_out = [pp.filter_roi_list(rois) for rois in rois_list_in]
+    rois_list_out = [pp.filter_roi_list(rois, roi_size) for rois in rois_list_in]
     rois_list_out = [rois for rois in rois_list_out if len(rois) > 0]
     return rois_list_out
-
-
-def classify_image_samples(rois_list_in: list) -> list:
-    return [
-        classifier.predict(
-            np.asarray(rois).reshape((len(rois), ) + rois[0].shape + (1, ))
-        )
-        for
-        rois
-        in
-        resized_rois_list
-    ]
 
 
 def infer_readings(labels_list_in: list) -> list:
@@ -84,25 +71,40 @@ def augment_samples(rois_list_in, readings_list_in) -> list:
     return augmented_samples_out
 
 
-if __name__ == "__main__":
+def show_image_cv2(image: np.ndarray):
+    cv2.imshow("augmented_with_readings", image)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
 
-    classifier = classifier_subsystem.load_model()
 
-    while True:
+class ReadingAugmentationSystem:
 
-        # get frame
-        current_frame_raw = cv2.imread("./media/Manga_raw.jpg")
-        # current_frame_raw = segmentation_subsystem.get_camera_image()
+    def __init__(self):
+        self.classifier = classifier_subsystem.load_model()
+        self.gui = gui_module.detect_kanji(self.process_one_frame)
+
+    def classify_image_samples(self, rois_list_in: list) -> list:
+        return [
+            self.classifier.predict(
+                np.asarray(rois).reshape((len(rois), ) + rois[0].shape + (1, ))
+            )
+            for
+            rois
+            in
+            rois_list_in
+        ]
+
+    def process_one_frame(self, frame: np.ndarray, roi_size: int):
 
         # compute rois
-        current_frame, rois_list = compute_rois(current_frame_raw)
+        current_frame, rois_list = compute_rois(frame)
 
-        show_rois(np.copy(current_frame_raw), rois_list)  # TODO remove
-
+        augmented_image_rois = show_rois(np.copy(frame), rois_list)  # TODO remove
+        #
         # filter small and large rois  # TODO
-        rois_list = filter_rois_list(rois_list)
-
-        show_rois(np.copy(current_frame_raw), rois_list)  # TODO remove
+        rois_list = filter_rois_list(rois_list, roi_size)
+        #
+        augmented_image_rois_filtered = show_rois(np.copy(frame), rois_list)  # TODO remove
 
         # make image samples square
         processed_rois_list = [pp.preprocess_roi_list(rois) for rois in rois_list]
@@ -111,7 +113,16 @@ if __name__ == "__main__":
         resized_rois_list = [pp.resize_roi_list(rois) for rois in rois_list]
 
         # classify image samples
-        labels = classify_image_samples(resized_rois_list)
+        labels = self.classify_image_samples(resized_rois_list)
+        print(
+            [
+                "".join([classify_utils.tensor_to_kanji(label) for label in line])
+                for
+                line
+                in
+                labels
+            ]
+        )
 
         # infer readings
         readings = infer_readings(labels)
@@ -124,20 +135,30 @@ if __name__ == "__main__":
         augmented_samples_fake = augment_samples(processed_rois_list, kanji_fake_readings)  # TODO
         # TODO
         # recombine with image  # TODO
-        augmented_image_fake = augment_utils.recombine(np.copy(current_frame_raw), augmented_samples_fake)  # TODO
+        augmented_image_fake = augment_utils.recombine(np.copy(frame), augmented_samples_fake)  # TODO
         # TODO
-        cv2.imshow("augmented_with_labels", augmented_image_fake)  # TODO
-        cv2.waitKey()  # TODO
-        cv2.destroyAllWindows()  # TODO
+        # cv2.imshow("augmented_with_labels", augmented_image_fake)  # TODO
+        # cv2.waitKey()  # TODO
+        # cv2.destroyAllWindows()  # TODO
 
         # augment readings into image samples
         augmented_samples = augment_samples(processed_rois_list, readings)
 
         # recombine with image
-        augmented_image = augment_utils.recombine(current_frame_raw, augmented_samples)
+        augmented_image = augment_utils.recombine(frame, augmented_samples)
 
-        #call gui  # TODO
-        cv2.imshow("augmented_with_readings", augmented_image)
-        cv2.waitKey()
-        cv2.destroyAllWindows()
+        # show_image_cv2(augmented_image)
+        return augmented_image
+
+
+if __name__ == "__main__":
+
+    system = ReadingAugmentationSystem()
+
+    # # get frame
+    # current_frame_raw = cv2.imread("./media/Manga_raw.jpg")
+    #
+    # while True:
+    #
+    #     system.process_one_frame(np.copy(current_frame_raw))
 

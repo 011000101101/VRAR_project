@@ -19,7 +19,7 @@ def unify_sample_size(sample: np.ndarray) -> np.ndarray:
     return cv2.resize(sample, (SAMPLE_IMAGE_SIZE, SAMPLE_IMAGE_SIZE))
 
 
-def filter_roi_list(rois: list):
+def filter_roi_list(rois: list, roi_size: int):
     return [
         (image, (x, y, w, h))
         for
@@ -27,7 +27,7 @@ def filter_roi_list(rois: list):
         in
         rois
         if
-        15 < w < 30 and 15 < h < 30
+        roi_size*0.8 < w < roi_size*1.2 and roi_size*0.8 < h < roi_size*1.2
     ]
 
 
