@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import random
 import matplotlib.pyplot as plt
 
 def retrieve_current_frame(image, debugLevel = 0):
@@ -18,7 +19,10 @@ def retrieve_current_frame(image, debugLevel = 0):
 
 def start_camera():
     global capture
-    capture = cv2.VideoCapture(0)
+    capture = cv2.VideoCapture()
+    if not capture.open(0):
+        print("Can not open camera")
+        return
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
 
 def get_camera_image():
@@ -101,9 +105,9 @@ def filterRoisBySize(possibleRois, imageHeight, imageWidth):
         (x,y,w,h) = roi
         if h == imageHeight:
             continue
-        if w*h*5 > imageHeight*imageWidth:
+        if w*h*5 > imageHeight*imageWidth :
             continue
-        if w*h*15000< imageHeight*imageWidth:
+        if w*h*15000< imageHeight*imageWidth or w*h <30:
             continue
         rois.append(roi)
     return rois
@@ -181,7 +185,7 @@ def filterRoisByKanjiContours(possibleRois, grey):
         #filter bounding boxes that are vertically aligned
         if len(boundingBoxes) > 0:
             boundingBoxes.sort(key=sortCriteriaPositionX)
-            diff = 3
+            diff = 8
             subsequence = []
             for i in range(len(boundingBoxes)-1):
                 (x,y,w,h) = boundingBoxes[i]
@@ -194,7 +198,7 @@ def filterRoisByKanjiContours(possibleRois, grey):
                 else:    
                     subsequence.append(boundingBoxes[i])
                 #detect column end
-                if( abs(x -boundingBoxes[i+1][0]) > diff ):
+                if( abs(x+w/2 -boundingBoxes[i+1][0] -boundingBoxes[i+1][2]/2) > diff ):
                     #to filter false boxes we are not allowing single characters
                     if len(subsequence)>1:
                         #sort characters in one column
@@ -227,10 +231,9 @@ def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
     
     blurred = cv2.GaussianBlur(downsampledImage, (3,3), 0.5)
 
-    adaptiveThreshold = cv2.adaptiveThreshold(src=downsampledImage, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY, blockSize=11, C=10)
-    threshold = cv2.erode(adaptiveThreshold, None, iterations=3)#3
-    #threshold = cv2.dilate(threshold,cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations=1) #MorphCross
-    threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations = 4)#  blackhatKernel, iterations = 1  or cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations = 4
+    adaptiveThreshold = cv2.adaptiveThreshold(src=downsampledImage, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY, blockSize=9, C=10)
+    threshold = cv2.erode(adaptiveThreshold, None, iterations=3)
+    threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations = 3)
 
     harris = cv2.cornerHarris(blurred, 2,3,0.04)
     harrisRaw = np.zeros(harris.shape).astype("uint8")
@@ -264,21 +267,25 @@ def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
 
     #rois = filterRoisByKanjiContoursColumnwise(possibleRois, grey)
     rois = filterRoisByKanjiContours(possibleRois, grey)
-    if debugLevel>=3:
-        histogram(rois)
-
+    
     if debugLevel>=1:
         numberRois = 0
         for column in rois:
+            color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
             for roi in column:
                 (x, y, w, h) = roi
-                cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
+                cv2.rectangle(image, (x, y), (x+w, y+h), color)
                 numberRois = numberRois +1
         print("rois: " + str(numberRois))
     if debugLevel>=2:
         for roi in possibleRois:
             (x, y, w, h) = roi
             cv2.rectangle(image, (x, y), (x+w, y+h), (255,0,0))
+    if debugLevel>=3:
+        historgram(rois)
+        downsampledImageColor = downsample(image, 480)
+        downsampledImageColor[harris>0.02*harris.max()] = (0,0,255)
+        cv2.imshow("harris",downsampledImageColor)    
 
     return (image, grey, rois)
 
@@ -303,12 +310,16 @@ if __name__ == "__main__":
     blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5te
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))#21,21
-    mode = 3
+    mode = 2
     if mode == 0:
         saveTestImage()
     if mode == 1:
         useCamera(blackhatKernelY, closingKernel, debugLevel=1)
     if mode == 2:
+        image = cv2.imread("Manga_raw.jpg")
+        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
+        cv2.imshow("Segmentation", image)
+        cv2.waitKey(0)
         image = cv2.imread("test.png")
         (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
         cv2.imshow("Segmentation", image)
