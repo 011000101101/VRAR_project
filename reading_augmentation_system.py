@@ -5,10 +5,13 @@ import utils.preprocess as pp
 import utils.classify_util as classify_utils
 import utils.image_augmenting as augment_utils
 import GUI.detect_kanji as gui_module
+from utils.params import *
 
 import numpy as np
 import cv2
 import itertools
+import pickle
+import os
 
 
 def show_rois(image_in: np.ndarray, rois_list_in: list):
@@ -114,15 +117,35 @@ class ReadingAugmentationSystem:
 
         # classify image samples
         labels = self.classify_image_samples(resized_rois_list)
-        print(
-            [
-                "".join([classify_utils.tensor_to_kanji(label) for label in line])
-                for
-                line
-                in
-                labels
-            ]
-        )
+
+        # # debug info
+        # lines = [
+        #         "".join([classify_utils.tensor_to_kanji(label) for label in line])
+        #         for
+        #         line
+        #         in
+        #         labels
+        #     ]
+        # print(lines)
+        # string_labels = [
+        #     [classify_utils.tensor_to_kanji(label) for label in line]
+        #     for
+        #     line
+        #     in
+        #     labels
+        # ]
+        # tagged_samples = [
+        #     (sample, kanji)
+        #     for
+        #     sample, kanji
+        #     in
+        #     zip(
+        #         [item for sublist in resized_rois_list for item in sublist],
+        #         [item for sublist in string_labels for item in sublist]
+        #     )
+        # ]
+        # with open(os.path.join(ROOT_DIR, "debug/classified_samples.pkl"), 'wb') as f:
+        #     pickle.dump(tagged_samples, f, pickle.HIGHEST_PROTOCOL)
 
         # infer readings
         readings = infer_readings(labels)

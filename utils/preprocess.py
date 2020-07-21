@@ -27,7 +27,7 @@ def filter_roi_list(rois: list, roi_size: int):
         in
         rois
         if
-        roi_size*0.8 < w < roi_size*1.2 and roi_size*0.8 < h < roi_size*1.2
+        roi_size*0.6 < w < roi_size*1.6 and roi_size*0.6 < h < roi_size*1.4
     ]
 
 
