@@ -20,6 +20,11 @@ def unify_sample_size(sample: np.ndarray) -> np.ndarray:
 
 
 def filter_roi_list(rois: list, roi_size: int):
+    for roi in rois:
+        image, (x, y, w, h) = roi
+        if w == 0 or h == 0:
+            print("ERROR: zero_size sample found.")
+
     return [
         (image, (x, y, w, h))
         for
@@ -27,31 +32,34 @@ def filter_roi_list(rois: list, roi_size: int):
         in
         rois
         if
-        roi_size*0.6 < w < roi_size*1.6 and roi_size*0.6 < h < roi_size*1.4
+        # roi_size*0.6 < w < roi_size*1.6 and roi_size*0.6 < h < roi_size*1.4
+        roi_size * 0.8 < max(h, w) < roi_size * 1.2
     ]
 
 
 def preprocess_roi_list(rois: list):
 
-    split_rois = []
-    for image, (x, y, w, h) in rois:
-        vertical_stacking_factor = h/w
-        while vertical_stacking_factor > 1.75:
-            split_rois.append(
-                (
-                    image[:w, :],
-                    (x, y, w, w)
-                )
-            )
-            vertical_stacking_factor = vertical_stacking_factor - 1
-            y = y + w
-            h = h - w
-        split_rois.append(
-            (
-                image[:h, :],
-                (x, y, w, h)
-            )
-        )
+    # TODO not needed?
+    # split_rois = []
+    # for image, (x, y, w, h) in rois:
+    #     vertical_stacking_factor = h/w
+    #     while vertical_stacking_factor > 1.75:
+    #         split_rois.append(
+    #             (
+    #                 image[:w, :],
+    #                 (x, y, w, w)
+    #             )
+    #         )
+    #         vertical_stacking_factor = vertical_stacking_factor - 1
+    #         y = y + w
+    #         h = h - w
+    #     split_rois.append(
+    #         (
+    #             image[:h, :],
+    #             (x, y, w, h)
+    #         )
+    #     )
+    split_rois = rois
 
     processed_rois = [
         square_sample(image, location)

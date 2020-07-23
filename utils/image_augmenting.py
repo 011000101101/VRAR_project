@@ -45,9 +45,36 @@ def add_noise_greyscale(image: np.ndarray, noise_typ: str):
         w, h = image.shape
         gauss = np.random.randn(w, h)
         gauss = gauss.reshape((w, h))
-        gauss = gauss / 3
+        gauss = gauss / 5
         noisy = image + image * gauss
         return noisy.clip(0, 255).astype("uint8")
+
+
+def blur_custom(img: np.ndarray) -> np.ndarray:
+    kernel = np.asarray([
+        [0.0625, 0.125, 0.0625],
+        [0.125, 0.25, 0.125],
+        [0.0625, 0.125, 0.0625]
+    ])
+    return cv2.filter2D(img, -1, kernel)
+
+
+def blur_avg(img: np.ndarray) -> np.ndarray:
+    kernel = np.ones((3, 3), np.float32) / 9
+    return cv2.filter2D(img, -1, kernel)
+
+
+def blur_gauss(img: np.ndarray) -> np.ndarray:
+    return cv2.GaussianBlur(img.astype('uint8'), (3, 3), 0.0).astype('uint8')
+
+
+def apply_blur_3_times(img: np.ndarray, blur_func: callable) -> list:
+    tmp = []
+    img_tmp = img
+    for _ in range(3):
+        img_tmp = blur_func(img_tmp)
+        tmp.append(img_tmp)
+    return tmp
 
 
 def augment_samples(samples, readings):
