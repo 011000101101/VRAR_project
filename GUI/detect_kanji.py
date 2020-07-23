@@ -64,6 +64,7 @@ class detect_kanji(QDialog):
     def changedValue(self):
         self.roi_size = self.mySlider.value()
         self.label.setText(str(self.roi_size))
+        self.roi_size = self
         self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
         cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
         self.displayImage()
