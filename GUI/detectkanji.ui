@@ -86,8 +86,11 @@
    <property name="maximum">
     <number>50</number>
    </property>
+   <property name="sliderPosition">
+    <number>25</number>
+   </property>
    <property name="tracking">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
