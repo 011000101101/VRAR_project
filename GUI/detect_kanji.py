@@ -43,31 +43,25 @@ class detect_kanji(QDialog):
         self.detectButton.setText('Load Image')
         fname = QFileDialog.getOpenFileName(self, 'Open File', 'C:\\', "Image file(*.jpg *.png *.jpeg)")
         imagePath = fname[0]
-        # pixmap = QPixmap(imagePath)
 
-        # image = pixmap.toImage()
         self.image = cv2.imread(imagePath)
-        self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
-        cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
-        # pixmap = QPixmap.fromImage(image)
 
-        self.resize(self.processed_image.shape[1], self.processed_image.shape[0])
-        self.adjustSize()
-        self.displayImage()
+        if self.image is not None:
+            self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
+            cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
 
-        # self.imgLabel.setPixmap(QPixmap(pixmap))
-        # self.resize(pixmap.width(),pixmap.height())
-        # self.adjustSize()
-        # self.show()
+            self.resize(self.processed_image.shape[1], self.processed_image.shape[0])
+            self.adjustSize()
+            self.displayImage()
 
 
     def changedValue(self):
         self.roi_size = self.mySlider.value()
         self.label.setText(str(self.roi_size))
-        self.roi_size = self
-        self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
-        cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
-        self.displayImage()
+        if self.image is not None:
+            self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
+            cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
+            self.displayImage()
 
 
     def start_webcam(self):

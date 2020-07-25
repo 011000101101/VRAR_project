@@ -1,6 +1,6 @@
 import segmentation.Segmentation as segmentation_subsystem
-import classifier_subsystem.cnn as classifier_subsystem
-import translator_subsystem.translator_subsystem as translator_subsystem
+import classifier_subsystem.cnn_with_tfrecords as classifier_subsystem
+import translator_subsystem.lut_translator as translator_subsystem
 import utils.preprocess as pp
 import utils.classify_util as classify_utils
 import utils.image_augmenting as augment_utils
@@ -119,14 +119,14 @@ class ReadingAugmentationSystem:
         labels = self.classify_image_samples(resized_rois_list)
 
         # # debug info
-        # lines = [
-        #         "".join([classify_utils.tensor_to_kanji(label) for label in line])
-        #         for
-        #         line
-        #         in
-        #         labels
-        #     ]
-        # print(lines)
+        lines = [
+                "".join([classify_utils.tensor_to_kanji(label) for label in line])
+                for
+                line
+                in
+                labels
+            ]
+        print(lines)
         # string_labels = [
         #     [classify_utils.tensor_to_kanji(label) for label in line]
         #     for
@@ -149,6 +149,7 @@ class ReadingAugmentationSystem:
 
         # infer readings
         readings = infer_readings(labels)
+        # print(readings)
 
         # transform detected kanji into "readings" format to augment the detected kanji themselves instead of
         # their readings
@@ -171,7 +172,7 @@ class ReadingAugmentationSystem:
         augmented_image = augment_utils.recombine(frame, augmented_samples)
 
         # show_image_cv2(augmented_image)
-        return augmented_image_fake
+        return augmented_image_rois_filtered
 
 
 if __name__ == "__main__":
