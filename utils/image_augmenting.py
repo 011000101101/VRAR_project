@@ -183,5 +183,13 @@ def recombine(current_frame_raw, augmented_samples):
             if x + w > current_frame_raw.shape[1]:
                 w = current_frame_raw.shape[1] - x
                 image = image[:, :w]
+            if x < 0:
+                w = w + x
+                image = image[:, -x:]
+                x = 0
+            if y < 0:
+                h = h + y
+                image = image[-y:, :]
+                y = 0
             current_frame_raw[y:y+h, x:x+w] = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     return current_frame_raw

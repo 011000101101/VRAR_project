@@ -172,7 +172,7 @@ class ReadingAugmentationSystem:
         augmented_image = augment_utils.recombine(frame, augmented_samples)
 
         # show_image_cv2(augmented_image)
-        return augmented_image_rois_filtered
+        return augmented_image
 
 
 if __name__ == "__main__":
