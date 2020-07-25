@@ -28,8 +28,8 @@ def load_train_data(clean: bool = True):
     y = [sample[1] for sample in image_samples_augmented]
 
     # optionally limit number of samples for faster training
-    X = X[:100000]
-    y = y[:100000]
+    # X = X[:100000]
+    # y = y[:100000]
 
     # split into training and evaluation sets
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.05, shuffle=True)
@@ -50,6 +50,12 @@ def load_train_data(clean: bool = True):
 def convert_labels_to_tensors(y: list):
     indices = [index_dict[kanji] for kanji in y]
     return np.eye(N_VALUES)[indices]
+
+
+def convert_label_to_tensor(label: str):
+    tensor = np.zeros(N_VALUES, dtype=int)
+    tensor[index_dict[label]] = 1
+    return tensor
 
 
 def tensor_to_kanji(tensor: np.ndarray):

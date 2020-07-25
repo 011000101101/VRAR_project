@@ -82,6 +82,9 @@ def augment_samples(samples, readings):
     augmented_segments = []
     for segment in readings:
         words, segment_len, n_leading_kanji = segment
+        if words == [] or n_leading_kanji == 0:  # skip lines without readings or without kanji
+            current_sample_index += segment_len
+            continue
         augmented_segments.append(
             augment_segment(
                 samples[current_sample_index:current_sample_index+segment_len],
@@ -97,6 +100,7 @@ def augment_samples(samples, readings):
                 n_leading_kanji,
             )
         )
+        current_sample_index += segment_len
     return augmented_segments
 
 
@@ -118,28 +122,49 @@ def augment_segment(samples, words, n_leading_kanji):
 
 
 def augment_word(samples: list, reb: str):
+    """
+    fuse the images of a word and augment it with its reading
+    :param samples: list of images of the single kanji
+    :param reb: reading of this word
+    :return:
+    """
+    # create canvas for fused images
+    # coordinates of first image
     _, (x, y, _, _) = samples[0]
+    # coordinates and size of last image
     _, (x_tmp, y_tmp, w_tmp, h_tmp) = samples[-1]
+    # compute width and height of new image
     w = (x_tmp + w_tmp) - x
     h = (y_tmp + h_tmp) - y
+    # create white image
     new_sample = np.full((h, w), 255, dtype="uint8")
+
+    # place each kanji at half scale into the left half of its original bounding box
     for sample in samples:
+        # unpack kanji image
         image, (x_tmp, y_tmp, w_tmp, h_tmp) = sample
-        x_tmp = x_tmp - x
+        # get relative coordinates of bounding box
+        x_tmp = 0  # ignore slight left/right shifts (might move kanji by a few pixels)
         y_tmp = y_tmp - y
+        # compute new width and height
         new_w_tmp = int(w_tmp/2)
         new_h_tmp = int(h_tmp/2)
+        # rescale and insert
         new_sample[y_tmp:y_tmp+new_h_tmp, x_tmp:x_tmp+new_w_tmp] = cv2.resize(image, (new_h_tmp, new_w_tmp))
+
+    # compute font size (maximum possible given available space and assuming all kanji are square
     font_size_px = int(min(w/2, h/len(reb)))
     font_size_pt = int(font_size_px * 1)  # 0.75)  # convert to pt
-    # convert to correct format
+    # prepare image for text rendering
     img_pil = Image.fromarray(new_sample[:, int(w/2):])
-    # render single kanji by putting text onto the image
     draw = ImageDraw.Draw(img_pil)
     augmentation_font = ImageFont.truetype(os.path.join(ROOT_DIR, "resources/fonts/Xano-Mincho/XANO-mincho-U32.ttf"), font_size_pt)
-    y_tmp = int((w-font_size_px*len(reb))/2)
+    # compute initial vertical position
+    y_tmp = (h-font_size_px*len(reb)) // 2
+    # render each kanji by putting text onto the image
     for char in reb:
         draw.text((0, y_tmp), char, font=augmentation_font, fill=0)  # TODO center in segment
+        # increment vertical position
         y_tmp += font_size_px
     # convert image back to numpy array and merge into augmented image
     new_sample[:, int(w/2):] = np.array(img_pil)
@@ -149,5 +174,14 @@ def augment_word(samples: list, reb: str):
 def recombine(current_frame_raw, augmented_samples):
     for sample in augmented_samples:
         image, (x, y, w, h) = sample
-        current_frame_raw[y:y+h, x:x+w] = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        try:
+            current_frame_raw[y:y+h, x:x+w] = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        except ValueError:  # trying to paste outside of image area...
+            if y + h > current_frame_raw.shape[0]:
+                h = current_frame_raw.shape[0] - y
+                image = image[:h, :]
+            if x + w > current_frame_raw.shape[1]:
+                w = current_frame_raw.shape[1] - x
+                image = image[:, :w]
+            current_frame_raw[y:y+h, x:x+w] = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     return current_frame_raw

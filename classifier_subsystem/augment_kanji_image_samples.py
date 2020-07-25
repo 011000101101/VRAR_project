@@ -17,11 +17,11 @@ def augment(image_samples):
     samples = []
     clean_samples = []
 
-    i= 0
-    print(len(image_samples.keys()))
+    kanji_count = 0
     for kanji in image_samples.keys():
-        print(i)
-        i += 1
+        if kanji_count % 100 == 0:
+            print("processed {} kanji. \t({} total)".format(kanji_count, len(image_samples.keys())))
+        kanji_count += 1
         for image in image_samples[kanji]:
 
             samples_tmp = []
@@ -29,7 +29,7 @@ def augment(image_samples):
             # create noisy image
             img_all = add_noise_greyscale(add_noise_greyscale(add_noise_greyscale(image[1], "speckle"), "gauss"), "s_p")
 
-            samples_tmp.append(image[0])
+            samples_tmp.append(image[1])
             samples_tmp.append(img_all)
 
             # create various blurs in 3 intensities on the clean and noisy image
@@ -46,12 +46,12 @@ def augment(image_samples):
 
             # img_all_blur_bilateral = cv2.bilateralFilter(img_all.astype('uint8'), 3, 50, 50)  # bad, doesn't do much
 
-            source_row = np.hstack([image[1], image[1], image[1], img_all, img_all, img_all])
-            upper_row = np.hstack(samples_tmp[2:8])
-            mid_row = np.hstack(samples_tmp[8:14])
-            lower_row = np.hstack(samples_tmp[14:20])
-            total = np.vstack((source_row, upper_row, mid_row, lower_row))
-            cv2.imshow("asdf", total);cv2.waitKey();cv2.destroyAllWindows()
+            # source_row = np.hstack([image[1], image[1], image[1], img_all, img_all, img_all])
+            # upper_row = np.hstack(samples_tmp[2:8])
+            # mid_row = np.hstack(samples_tmp[8:14])
+            # lower_row = np.hstack(samples_tmp[14:20])
+            # total = np.vstack((source_row, upper_row, mid_row, lower_row))
+            # cv2.imshow("asdf", total);cv2.waitKey();cv2.destroyAllWindows()
 
             samples += [(img, kanji) for img in samples_tmp]
 
