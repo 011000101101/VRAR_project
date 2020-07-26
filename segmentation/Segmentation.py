@@ -226,7 +226,8 @@ def resizeRois(possibleRois, currentHeight, wantedHeight):
 def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
     (imageHeight, imageWidth) = image.shape[:2]
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    downsampledImage = downsample(grey, 480)
+    # downsampledImage = downsample(grey, 480)
+    downsampledImage = grey  # TODO
     (imageHeightDownsampled, imageWidthDownsampled) = downsampledImage.shape[:2]
     
     blurred = cv2.GaussianBlur(downsampledImage, (3,3), 0.5)

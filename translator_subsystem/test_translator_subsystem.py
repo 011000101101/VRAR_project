@@ -1,9 +1,12 @@
-from translator_subsystem import translator_subsystem
+import numpy as np
+
+import translator_subsystem.lut_translator as translator_subsystem
 
 
 def translate_and_mask_full_sequence_for_testing(sequence: str, n_leading_kanji: int):
-    used_chars, partial_translations = translator_subsystem.translate_and_mask_sequence(sequence, n_leading_kanji)
+    partial_translations = translator_subsystem.translate_and_mask_sequence(sequence, n_leading_kanji)
     translation = "".join([partial_translation[2] for partial_translation in partial_translations])
+    used_chars = np.sum([[partial_translation[2] for partial_translation in partial_translations]])
     translation += sequence[used_chars:]
     return translation
 

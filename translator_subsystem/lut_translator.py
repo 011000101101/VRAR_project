@@ -156,29 +156,45 @@ def translate_and_mask_sequence(sequence: str, n_leading_kanji: int):
 
 
 def translate_and_mask_line(line: str):
+    """
+    translate and mask a whole line (several concatenated sequences)
+    :param line: the line to translate
+    :return: the list of translated and masked sequences, each with their length (char count) and leading kanji count
+    """
     current_sequence_start = 0
     last_char_was_kana = False
     translated_and_masked_sequences = []
     number_of_kanji = 0
+    # process each char
     for i in range(len(line)):
+        # if current char is kana, mark it as such and continue
         if stringutils.is_kana(line[i]):
             last_char_was_kana = True
+        # if it is kanji...
         else:
+            # ... and the last char was kana, this is the beginning of a new sequence, and the old/finished sequence
+            # can be processed and saved
             if last_char_was_kana:
+                # translate this sequence and save it
                 translated_and_masked_sequences.append(
                     (
-                        translate_and_mask_sequence(line[current_sequence_start:i], i-current_sequence_start),
+                        translate_and_mask_sequence(line[current_sequence_start:i], number_of_kanji),
                         i - current_sequence_start,
                         number_of_kanji
                     )
                 )
+                # reset kanji counter, set start index of next sequence
+                current_sequence_start = i
                 number_of_kanji = 1
+            # ... otherwise, just count the kanji
             else:
                 number_of_kanji += 1
+            # and mark this char as kanji for the next iteration
             last_char_was_kana = False
+    # translate the last sequence and save it
     translated_and_masked_sequences.append(
         (
-            translate_and_mask_sequence(line[current_sequence_start:], len(line) - current_sequence_start),
+            translate_and_mask_sequence(line[current_sequence_start:], number_of_kanji),
             len(line) - current_sequence_start,
             number_of_kanji
         )

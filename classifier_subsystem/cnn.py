@@ -50,7 +50,7 @@ class Flush(tf.keras.callbacks.Callback):
 def train_model( X_train, X_val, y_train, y_val):
 
     # load data
-    X_train, X_val, y_train, y_val = classify_utils.load_train_data(clean=True)
+    X_train, X_val, y_train, y_val = classify_utils.load_train_data(clean=False)
     # X_train = [np.zeros((30, 30, 3))]
     X_train = np.asarray(X_train).reshape((len(X_train),) + X_train[0].shape + (1,))
     X_val = np.asarray(X_val).reshape((len(X_val),) + X_val[0].shape + (1,))

@@ -28,6 +28,6 @@ FONT_PATHS = [
     # ("togalite-heavy", "togalite/togalite-heavy.otf"),
     # ("togalite-black", "togalite/togalite-black.otf"),
     # ("chikara_dzuyoku", "chikara_dzuyoku/851CHIKARA-DZUYOKU_kanaA_004.ttf"),
-    ("nikkyou_sans", "NikkyouSans/NikkyouSans-B6aV.ttf"),
+    # ("nikkyou_sans", "NikkyouSans/NikkyouSans-B6aV.ttf"),
     ("xano_mincho", "Xano-Mincho/XANO-mincho-U32.ttf")
 ]

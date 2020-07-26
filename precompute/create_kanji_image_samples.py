@@ -56,7 +56,7 @@ def create_samples():
         for kanji in kanji_list:
 
             if kanji_count%100 == 0:
-                print("\tprocessed {} kanji.".format(kanji_count))
+                print("\tprocessed {} kanji. \t({} total)".format(kanji_count, len(kanji_list)))
             kanji_count += 1
 
             image_samples_tmp = []
