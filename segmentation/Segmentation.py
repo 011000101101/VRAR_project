@@ -4,10 +4,11 @@ import math
 import random
 import matplotlib.pyplot as plt
 
-def retrieve_current_frame(image, debugLevel = 0):
+# interface method for segmentation
+def retrieve_current_frame(image, downsampleImageForSegmentation = False, debugLevel = 0):
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=debugLevel)
+    (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel, downsampleForSegmentation=downsampleImageForSegmentation, debugLevel=debugLevel)
     rois = []
     for subsequence in sequences:
         column = []
@@ -17,6 +18,7 @@ def retrieve_current_frame(image, debugLevel = 0):
         rois.append(column)
     return (image, rois)
 
+# interface for starting the camera
 def start_camera():
     global capture
     capture = cv2.VideoCapture()
@@ -25,6 +27,7 @@ def start_camera():
         return
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
 
+# interface for getting a camera image
 def get_camera_image():
     global capture
     success = False
@@ -32,10 +35,11 @@ def get_camera_image():
         success, image = capture.read()
     return image
 
-def read_image(filepath):
+# interface for reading an image
+def read_image(filepath: str):
     return cv2.imread(filepath)
 
-
+# scale image to a specific height and preserve aspect ratio
 def downsample(image, height, inter = cv2.INTER_AREA):
     (originalHeight, originalWidth) = image.shape[:2]
     scalingFactor = height / float(originalHeight)
@@ -59,6 +63,7 @@ def saveTestImage():
             cv2.imwrite(filename, image)
             break
 
+# retrieve one camera picture for testing
 def getLiveImage():
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
@@ -67,6 +72,7 @@ def getLiveImage():
         success , image = capture.read()
     return image
 
+# for debugging size of Kanji rois
 def histogram(rois):
     roi_widths = [w if w < 50 else 0 for (x, y, w, h) in rois]
     roi_heights = [h if h < 50 else 0 for (x, y, w, h) in rois]
@@ -74,12 +80,15 @@ def histogram(rois):
     plt.hist(roi_heights)
     plt.show()
 
+# function given to sort function for finding columns
 def sortCriteriaPositionX(box):
     return box[0]
 
+# function given to sort function for ordering elements within a column
 def sortCriteriaPositionY(box):
     return box[1]
 
+# find bounding rectangle for a list of bounding rectangles
 def findBoundingRectangle(RectangleList, imageHeight, imageWidth):
     x_min = imageWidth - 1
     y_min = imageHeight - 1
@@ -99,6 +108,7 @@ def findBoundingRectangle(RectangleList, imageHeight, imageWidth):
     h = y_max-y_min
     return (x_min, y_min, w, h)
 
+# filter rois given by segmentation steps to have reasonable dimensions
 def filterRoisBySize(possibleRois, imageHeight, imageWidth):
     rois = []
     for roi in possibleRois:
@@ -107,113 +117,12 @@ def filterRoisBySize(possibleRois, imageHeight, imageWidth):
             continue
         if w*h*5 > imageHeight*imageWidth :
             continue
-        if w*h*15000< imageHeight*imageWidth or w*h <30:
+        if w*h*15000< imageHeight*imageWidth or w*h <200:
             continue
         rois.append(roi)
     return rois
 
-def filterRoisByKanjiContoursColumnwise(possibleRois, grey):
-    (imageHeight, imageWidth) = grey.shape[:2]
-    edges = cv2.Canny(grey, 50, 100, L2gradient=True)
-    rois = []
-    debug = False
-    for roi in possibleRois:
-        (x,y,w,h) = roi
-        #filter contour of whole image by assuming a contour with full height must be that one
-        if h == imageHeight:
-            continue
-        roiImage = edges[y:y+h,x:x+w]
-        contoursRoi, hierachyRoi = cv2.findContours(roiImage, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=(x,y))
-        boundingBoxes = [cv2.boundingRect(contour) for contour in contoursRoi]
-
-        if debug:
-            for box in boundingBoxes:
-                (x, y, w, h) = box
-                cv2.rectangle(image, (x, y), (x+w, y+h), (255,255,0))
-
-        #filter bounding boxes that are vertically aligned
-        if len(boundingBoxes) > 0:
-            boundingBoxes.sort(key=sortCriteriaPositionX)
-            diff = 10
-            sequences = []
-            subsequence = []
-            consecutive = False
-            for i in range(len(boundingBoxes)-1):
-                if( abs(boundingBoxes[i][0] -boundingBoxes[i+1][0]) < diff ):
-                    subsequence.append(boundingBoxes[i])
-                    consecutive = True
-                else:
-                    if consecutive:
-                        subsequence.append(boundingBoxes[i])
-                        consecutive = False
-                        sequences.append(subsequence)
-                        subsequence = []
-            #Handle last element
-            if consecutive:
-                subsequence.append(boundingBoxes[-1])
-                sequences.append(subsequence)
-            else:
-                last = [boundingBoxes[-1]]
-                sequences.append(last)
-            for subsequence in sequences:
-                boundingRectangle = findBoundingRectangle(subsequence, imageHeight, imageWidth)
-                rois.append(boundingRectangle)
-        
-    return rois
-
-def filterRoisByKanjiContours(possibleRois, grey):
-    debug = False
-    (imageHeight, imageWidth) = grey.shape[:2]
-    edges = cv2.Canny(grey, 100, 200, L2gradient=True)
-    edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT ,(3,3)))
-    if debug:
-        cv2.imshow("edges", edges)
-    sequences = []
-    
-    for roi in possibleRois:
-        (x,y,w,h) = roi
-        roiImage = edges[y:y+h,x:x+w]
-        contoursRoi, hierachyRoi = cv2.findContours(roiImage, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=(x,y))
-        boundingBoxes = [cv2.boundingRect(contour) for contour in contoursRoi]
-        boundingBoxes = filterRoisBySize(boundingBoxes,imageHeight,imageWidth)
-
-        if debug:
-            for box in boundingBoxes:
-                (x, y, w, h) = box
-                cv2.rectangle(image, (x, y), (x+w, y+h), (255,255,0))
-
-        #filter bounding boxes that are vertically aligned
-        if len(boundingBoxes) > 0:
-            boundingBoxes.sort(key=sortCriteriaPositionX)
-            diff = 8
-            subsequence = []
-            for i in range(len(boundingBoxes)-1):
-                (x,y,w,h) = boundingBoxes[i]
-                #split boxes to big
-                if h > 1.75 * w:
-                    splitFactor = round(float(h)/float(w))
-                    newHeight = round(h/splitFactor)
-                    for j in range(splitFactor):
-                        subsequence.append((x,y+j*newHeight,w,newHeight))
-                else:    
-                    subsequence.append(boundingBoxes[i])
-                #detect column end
-                if( abs(x+w/2 -boundingBoxes[i+1][0] -boundingBoxes[i+1][2]/2) > diff ):
-                    #to filter false boxes we are not allowing single characters
-                    if len(subsequence)>1:
-                        #sort characters in one column
-                        subsequence.sort(key=sortCriteriaPositionY)
-                        sequences.append(subsequence)
-                    subsequence =[]
-
-            #Handle last element
-            subsequence.append(boundingBoxes[-1])
-            if len(subsequence)>1:
-                subsequence.sort(key=sortCriteriaPositionY)
-                sequences.append(subsequence)
-            
-    return sequences
-
+# resize Rois found in a downsampled image
 def resizeRois(possibleRois, currentHeight, wantedHeight):
     scaleFactor = wantedHeight / float(currentHeight)
     scaledRois = []
@@ -223,33 +132,124 @@ def resizeRois(possibleRois, currentHeight, wantedHeight):
         
     return scaledRois
 
-def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
-    (imageHeight, imageWidth) = image.shape[:2]
-    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # downsampledImage = downsample(grey, 480)
-    downsampledImage = grey  # TODO
-    (imageHeightDownsampled, imageWidthDownsampled) = downsampledImage.shape[:2]
+def postProcessColumnAndAddToList(column, columnList):
+    #to filter false boxes we are not allowing single characters
+    if len(column) > 1:
+        #sort characters in one column
+        column.sort(key=sortCriteriaPositionY)
+
+        # remove fully contained bounding boxes
+        containmentTable = np.zeros(len(column))
+        for i in range(len(column)):
+            (x,y,w,h) = column[i]
+            j = i+1
+            while j < len(column):    
+                (x_n,y_n, w_n, h_n) = column[j]
+                if x<=x_n and x_n+w_n<=x+w and y<=y_n and y_n+h_n<=y+h:
+                    containmentTable[j]=1
+                j = j+1
+        column = [column[i] for i in range(len(column)) if containmentTable[i]==0]
+
+
+        #check for gaps in a column
+        columnPart = []
+        for i in range(len(column)-1):
+            (x,y,w,h) = column[i]
+            (x_n,y_n, w_n, h_n) = column[i+1]
+            if abs(y_n-y) < max(w,h)*1.5:
+                columnPart.append(column[i])
+            else:
+                columnPart.append(column[i])
+                columnList.append(columnPart)
+                columnPart = []
+        columnPart.append(column[-1])
+        columnList.append(columnPart)
+
+
+
+
+# find bounding boxes for Kanji in regions of first segmentation step
+def filterRoisByKanjiContours(possibleRois, grey):
+    debug = False
+    (imageHeight, imageWidth) = grey.shape[:2]
+    #use canny to find edges in image
+    edges = cv2.Canny(grey, 100, 200, L2gradient=True)
+    edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT ,(3,3)))
+    if debug:
+        cv2.imshow("edges", edges)
+    sequences = []
     
+    for roi in possibleRois:
+        # find contours for region of first sementation step
+        (x,y,w,h) = roi
+        roiImage = edges[y:y+h,x:x+w]
+        contoursRoi= cv2.findContours(roiImage, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=(x,y))[0]
+
+        # use only those bounding boxes for reasonable contours
+        boundingBoxes = [cv2.boundingRect(contour) for contour in contoursRoi]
+        boundingBoxes = filterRoisBySize(boundingBoxes,imageHeight,imageWidth)
+
+        if debug:
+            imageColor = cv2.cvtColor(grey, cv2.COLOR_GRAY2BGR)
+            for box in boundingBoxes:
+                (x, y, w, h) = box
+                imageColor = cv2.cvtColor(grey, cv2.COLOR_GRAY2BGR)
+                cv2.rectangle(imageColor, (x, y), (x+w, y+h), (255,255,0))
+            cv2.imshow("Kanji contour boxes", imageColor)
+            cv2.waitKey(0)
+
+        #construct columns of Kanji
+        if len(boundingBoxes) > 0:
+            #bounding boxes are vertically aligned if they are in a column
+            boundingBoxes.sort(key=sortCriteriaPositionX)
+            diff = 8
+            subsequence = []
+
+            for i in range(len(boundingBoxes)-1):
+                (x,y,w,h) = boundingBoxes[i]
+                #split boxes that are to big in roughly equally big pieces
+                if h > 1.75 * w:
+                    splitFactor = round(float(h)/float(w))
+                    newHeight = round(h/splitFactor)
+                    for j in range(splitFactor):
+                        subsequence.append((x,y+j*newHeight,w,newHeight))
+                else:    
+                    subsequence.append(boundingBoxes[i])
+
+                #detect column end if vertical alignment ends
+                if( abs(x+w/2 -boundingBoxes[i+1][0] -boundingBoxes[i+1][2]/2) > diff ):
+                    postProcessColumnAndAddToList(subsequence, sequences)
+                    subsequence =[]
+
+            #Handle last element
+            subsequence.append(boundingBoxes[-1])
+            postProcessColumnAndAddToList(subsequence, sequences)
+            
+    return sequences
+
+def findTextFields(downsampledImage, blackhatKernel, closingKernel):
+    # Kanji have a lot of Harris features so use such regions as indicators for text
     blurred = cv2.GaussianBlur(downsampledImage, (3,3), 0.5)
-
-    adaptiveThreshold = cv2.adaptiveThreshold(src=downsampledImage, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY, blockSize=9, C=10)
-    threshold = cv2.erode(adaptiveThreshold, None, iterations=3)
-    threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations = 3)
-
     harris = cv2.cornerHarris(blurred, 2,3,0.04)
     harrisRaw = np.zeros(harris.shape).astype("uint8")
     harrisRaw[harris>0.02*harris.max()]=255
     harrisRaw = cv2.morphologyEx(harrisRaw, cv2.MORPH_CLOSE, blackhatKernel, iterations = 2)
     harrisRaw = cv2.morphologyEx(harrisRaw, cv2.MORPH_ERODE, cv2.getStructuringElement(cv2.MORPH_RECT, (2,2)), iterations=2)
 
-    contoursHarris, hierachyHarris = cv2.findContours(harrisRaw, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    boundariesHarris =[]
+    contoursHarris = cv2.findContours(harrisRaw, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+    boundariesHarris = []
     for contour in contoursHarris:
         (x, y, w, h) = cv2.boundingRect(contour)
         if w*h > 10:
             boundariesHarris.append((x,y,w,h))
 
-    contours, hierachy = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # transform text fields to rectangles
+    adaptiveThreshold = cv2.adaptiveThreshold(src=downsampledImage, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY, blockSize=9, C=10)
+    threshold = cv2.erode(adaptiveThreshold, None, iterations=3)
+    threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)), iterations = 3)
+
+    #find bounding boxes for text fields
+    contours = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
     possibleRois = []
     for contour in contours:
         (x, y, w, h) = cv2.boundingRect(contour)
@@ -260,13 +260,29 @@ def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
                 possibleRois.append((x,y,w,h))
                 break
     
+    return possibleRois
+
+# main segmentation algorithm
+def segmentation(image, blackhatKernel, closingKernel, downsampleForSegmentation, debugLevel = 0):
+    (imageHeight, imageWidth) = image.shape[:2]
+    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # downsample image for performance
+    downsampledImage = grey
+    if downsampleForSegmentation:
+        downsampledImage = downsample(grey, 480)
+    (imageHeightDownsampled, imageWidthDownsampled) = downsampledImage.shape[:2]
+
+    #find regions where text could be located
+    possibleRois = findTextFields(downsampledImage, blackhatKernel, closingKernel)
     if debugLevel >= 1:
         print("possibleRois: " + str(len(possibleRois)))
     
+    # resize and filter rois to find Kanjis in original image
     possibleRois = filterRoisBySize(possibleRois, imageHeightDownsampled, imageWidthDownsampled)
     possibleRois = resizeRois(possibleRois, imageHeightDownsampled, imageHeight)
 
-    #rois = filterRoisByKanjiContoursColumnwise(possibleRois, grey)
+    #find Kanjis in text regions
     rois = filterRoisByKanjiContours(possibleRois, grey)
     
     if debugLevel>=1:
@@ -283,14 +299,12 @@ def segmentation(image, blackhatKernel, closingKernel, debugLevel = 0):
             (x, y, w, h) = roi
             cv2.rectangle(image, (x, y), (x+w, y+h), (255,0,0))
     if debugLevel>=3:
-        historgram(rois)
-        downsampledImageColor = downsample(image, 480)
-        downsampledImageColor[harris>0.02*harris.max()] = (0,0,255)
-        cv2.imshow("harris",downsampledImageColor)    
+        histogram(rois)  
 
     return (image, grey, rois)
 
-def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
+# test segmentation pipline with camera
+def useCamera(blackhatKernel, closingKernel, downsampleForSegmentation = True, debugLevel = 0):
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
     while True:
@@ -298,7 +312,7 @@ def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
         if not success:
             continue
         e1 = cv2.getTickCount()
-        (image, grey, rois) = segmentation(image, blackhatKernel, closingKernel, debugLevel)
+        image = segmentation(image, blackhatKernel, closingKernel, downsampleForSegmentation, debugLevel)[0]
         e2 = cv2.getTickCount()
         time = (e2 - e1)/ cv2.getTickFrequency()
         print("last segmentation time:" + str(time))
@@ -308,37 +322,37 @@ def useCamera(blackhatKernel, closingKernel, debugLevel = 0):
 
 
 if __name__ == "__main__":
-    blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5te
+    blackhatKernelX = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 3))#13,5
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))#21,21
     mode = 2
+    # create example images for testing
     if mode == 0:
         saveTestImage()
+    # test camera
     if mode == 1:
-        useCamera(blackhatKernelY, closingKernel, debugLevel=1)
+        useCamera(blackhatKernelY, closingKernel, debugLevel=2)
+    #test loaded images
     if mode == 2:
         image = cv2.imread("Manga_raw.jpg")
-        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
+        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, False, debugLevel=2)
         cv2.imshow("Segmentation", image)
         cv2.waitKey(0)
         image = cv2.imread("test.png")
-        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, debugLevel=2)
+        (image, grey, rois) = segmentation(image, blackhatKernelY, closingKernel, True,  debugLevel=2)
         cv2.imshow("Segmentation", image)
         cv2.waitKey(0)
+    # example usage for interface methods
     if mode == 3:
         start_camera()
         while True:
             image = get_camera_image()
-            (image, rois) = retrieve_current_frame(image)
+            (image, rois) = retrieve_current_frame(image, True)
             for column  in  rois:
                 for thingy in column:
                     (roi,(x,y,w,h)) = thingy
                     cv2.rectangle(image, (x, y), (x+w, y+h), (0,255,0))
             cv2.imshow("Test", image)
             if cv2.waitKey(25) == 27:
-                break
-
-    
-
-
+                break 
     

@@ -8,7 +8,7 @@ from PyQt5.uic import loadUi
 import numpy as np
 
 from utils.params import *
-
+mode_dict = { 0: "segment", 1: "classify", 2: "augment"}
 
 def move_ui_object(ui_object, height_offset, width_offset):
     ui_object.setGeometry(QRect(
@@ -27,8 +27,10 @@ class detect_kanji(QDialog):
         loadUi(os.path.join(ROOT_DIR, 'GUI/detectkanji.ui'), self)
 
         self.roi_size = 25
+        self.mode = 2
         self.timer = QTimer(self)
         self.label.setText(str(self.roi_size))
+        self.label_2.setText("augment")
         self.process_frame = process_frame_func
         self.image = None
         self.processed_image = None
@@ -38,6 +40,8 @@ class detect_kanji(QDialog):
         self.detectButton.toggled.connect(self.loadImage)
         self.kanji_Enabled=False
         self.mySlider.valueChanged.connect(self.changedValue)
+        self.modeSlider.valueChanged.connect(self.chnageMode)
+
 
         self.setWindowTitle('Kanji detection')
         self.setWindowIcon(QIcon(os.path.join(ROOT_DIR, 'GUI/KanjiLogo.jpg')))
@@ -52,26 +56,35 @@ class detect_kanji(QDialog):
         self.detectButton.setText('Load Image')
         fname = QFileDialog.getOpenFileName(self, 'Open File', 'C:\\', "Image file(*.jpg *.png *.jpeg)")
         imagePath = fname[0]
+        # pixmap = QPixmap(imagePath)
 
+        # image = pixmap.toImage()
         self.image = cv2.imread(imagePath)
+        self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
+        cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
+        # pixmap = QPixmap.fromImage(image)
 
-        if self.image is not None:
-            self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
-            cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
+        self.resize(self.processed_image.shape[1], self.processed_image.shape[0])
+        self.adjustSize()
+        self.displayImage()
 
-            self.resize(self.processed_image.shape[1], self.processed_image.shape[0])
-            self.adjustSize()
-            self.displayImage()
+        # self.imgLabel.setPixmap(QPixmap(pixmap))
+        # self.resize(pixmap.width(),pixmap.height())
+        # self.adjustSize()
+        # self.show()
 
 
     def changedValue(self):
         self.roi_size = self.mySlider.value()
         self.label.setText(str(self.roi_size))
-        if self.image is not None:
-            self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
-            cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
-            self.displayImage()
+        self.roi_size = self
+        self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
+        cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
+        self.displayImage()
 
+    def chnageMode(self):
+        self.mode = self.modeSlider.value()
+        self.label_2.setText(mode_dict[int(self.mode)])
 
     def start_webcam(self):
         try:
@@ -152,6 +165,7 @@ class detect_kanji(QDialog):
         if window == 1:
             self.imgLabel.setPixmap(QPixmap.fromImage(img))
             self.imgLabel.setScaledContents(True)
+
 
 
 if __name__ == '__main__':
