@@ -8,7 +8,7 @@ from PyQt5.uic import loadUi
 import numpy as np
 
 from utils.params import *
-
+mode_dict = { 0: "segment", 1: "classify", 2: "augment"}
 
 class detect_kanji(QDialog):
     def __init__(self, process_frame_func):
@@ -18,8 +18,10 @@ class detect_kanji(QDialog):
         loadUi(os.path.join(ROOT_DIR, 'GUI/detectkanji.ui'), self)
 
         self.roi_size = 25
+        self.mode = 2
         self.timer = QTimer(self)
         self.label.setText(str(self.roi_size))
+        self.label_2.setText("augment")
         self.process_frame = process_frame_func
         self.image = None
         self.processed_image = None
@@ -29,6 +31,8 @@ class detect_kanji(QDialog):
         self.detectButton.toggled.connect(self.loadImage)
         self.kanji_Enabled=False
         self.mySlider.valueChanged.connect(self.changedValue)
+        self.modeSlider.valueChanged.connect(self.changedMode)
+
 
         self.setWindowTitle('Kanji detection')
         self.setWindowIcon(QIcon(os.path.join(ROOT_DIR, 'GUI/KanjiLogo.jpg')))
@@ -64,10 +68,13 @@ class detect_kanji(QDialog):
     def changedValue(self):
         self.roi_size = self.mySlider.value()
         self.label.setText(str(self.roi_size))
-        self.roi_size = self
         self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
         cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
         self.displayImage()
+
+    def changedMode(self):
+        self.mode = self.modeSlider.value()
+        self.label_2.setText(mode_dict[int(self.mode)])
 
 
     def start_webcam(self):
