@@ -6,6 +6,7 @@ import cv2
 
 def square_sample(sample: np.ndarray, location: tuple) -> (np.ndarray, tuple):
     (x, y, w, h) = location
+    print(location)
     new_size = max(w, h)
     new_sample = np.full((new_size, new_size), 255, dtype=sample.dtype)
     new_sample[int((new_size-h)/2):int((new_size-h)/2+h), int((new_size-w)/2):int((new_size-w)/2+w)] = sample

@@ -1,13 +1,22 @@
 import sys
 
 import cv2
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt, QRect
 from PyQt5.QtGui import QImage, QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from PyQt5.uic import loadUi
 import numpy as np
 
 from utils.params import *
+
+
+def move_ui_object(ui_object, height_offset, width_offset):
+    ui_object.setGeometry(QRect(
+        ui_object.x() + width_offset,
+        ui_object.y() + height_offset,
+        ui_object.width(),
+        ui_object.height()
+    ))
 
 
 class detect_kanji(QDialog):
@@ -66,6 +75,7 @@ class detect_kanji(QDialog):
 
     def start_webcam(self):
         try:
+
             self.capture = cv2.VideoCapture(0)  # 0 =default #1,2,3 =Extra Webcam
             self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
             self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
@@ -74,14 +84,16 @@ class detect_kanji(QDialog):
             if self.image is None:
                 raise Exception
 
+            self.cam_active = True
+
             self.timer.timeout.connect(self.update_frame)
-            self.timer.start(5)
+            self.timer.start(30)
         except Exception:
             print("ERROR: no camera found.")  # TODO
 
     def update_frame(self):
         ret, self.image = self.capture.read()
-        self.image = cv2.flip(self.image, 1)
+        # self.image = cv2.flip(self.image, 1)
 
         self.processed_image = self.process_frame(np.copy(self.image), self.roi_size)
         cv2.rectangle(self.processed_image, (0, 0), (self.roi_size, self.roi_size), (0, 0, 255))
@@ -105,11 +117,29 @@ class detect_kanji(QDialog):
         if self.timer.isActive():
             self.timer.stop()
 
+    def resize_window(self, new_img_size):
+        old_w = self.imgLabel.width()
+        old_h = self.imgLabel.height()
+        self.imgLabel.setFixedSize(new_img_size[1], new_img_size[0])
+        height_offset = new_img_size[0] - old_h
+        width_offset = new_img_size[1] - old_w
+        self.setFixedSize(
+            self.width() + width_offset,
+            self.height() + height_offset
+        )
+        move_ui_object(self.label, height_offset, 0)
+        # move_ui_object(self.label_2, height_offset, width_offset)
+        move_ui_object(self.mySlider, height_offset, 0)
+        # move_ui_object(self.modeSlider, height_offset, width_offset)
+
     def displayImage(self, window=1):
 
         img = self.processed_image
 
         qformat = QImage.Format_Indexed8
+
+        image_size = img.shape[:2]
+        self.resize_window(image_size)
 
         if len(img.shape) == 3:  # rows[0],cols[1],channels[2]
             if (img.shape[2]) == 4:
