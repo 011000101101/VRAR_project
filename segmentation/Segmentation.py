@@ -5,7 +5,7 @@ import random
 import matplotlib.pyplot as plt
 
 # interface method for segmentation
-def retrieve_current_frame(image, downsampleImageForSegmentation: bool, debugLevel = 0):
+def retrieve_current_frame(image, downsampleImageForSegmentation = False, debugLevel = 0):
     blackhatKernelY = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 7))
     closingKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     (image, grey, sequences) = segmentation(image, blackhatKernelY, closingKernel, downsampleForSegmentation=downsampleImageForSegmentation, debugLevel=debugLevel)
