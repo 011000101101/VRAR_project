@@ -97,17 +97,19 @@ class ReadingAugmentationSystem:
             rois_list_in
         ]
 
-    def process_one_frame(self, frame: np.ndarray, roi_size: int):
+    def process_one_frame(self, frame: np.ndarray, roi_size: int, mode: int):
 
         # compute rois
         current_frame, rois_list = compute_rois(frame)
 
-        augmented_image_rois = show_rois(np.copy(frame), rois_list)  # TODO remove
-        #
+        # augmented_image_rois = show_rois(np.copy(frame), rois_list)
+
         # filter small and large rois  # TODO
         rois_list = filter_rois_list(rois_list, roi_size)
-        #
-        augmented_image_rois_filtered = show_rois(np.copy(frame), rois_list)  # TODO remove
+
+        if mode == 0:
+            augmented_image_rois_filtered = show_rois(np.copy(frame), rois_list)
+            return augmented_image_rois_filtered
 
         # make image samples square
         processed_rois_list = [pp.preprocess_roi_list(rois) for rois in rois_list]
@@ -151,19 +153,18 @@ class ReadingAugmentationSystem:
         readings = infer_readings(labels)
         # print(readings)
 
-        # transform detected kanji into "readings" format to augment the detected kanji themselves instead of
-        # their readings
-        kanji_fake_readings = fake_infer_readings(labels)
+        if mode == 1:
+            # transform detected kanji into "readings" format to augment the detected kanji themselves instead of
+            # their readings
+            kanji_fake_readings = fake_infer_readings(labels)
 
-        # augment readings into image samples  # TODO
-        augmented_samples_fake = augment_samples(processed_rois_list, kanji_fake_readings)  # TODO
-        # TODO
-        # recombine with image  # TODO
-        augmented_image_fake = augment_utils.recombine(np.copy(frame), augmented_samples_fake)  # TODO
-        # TODO
-        # cv2.imshow("augmented_with_labels", augmented_image_fake)  # TODO
-        # cv2.waitKey()  # TODO
-        # cv2.destroyAllWindows()  # TODO
+            # augment readings into image samples
+            augmented_samples_fake = augment_samples(processed_rois_list, kanji_fake_readings)
+
+            # recombine with image
+            augmented_image_fake = augment_utils.recombine(np.copy(frame), augmented_samples_fake)
+
+            return augmented_image_fake
 
         # augment readings into image samples
         augmented_samples = augment_samples(processed_rois_list, readings)
@@ -172,7 +173,7 @@ class ReadingAugmentationSystem:
         augmented_image = augment_utils.recombine(frame, augmented_samples)
 
         # show_image_cv2(augmented_image)
-        return augmented_image_rois_filtered
+        return augmented_image
 
 
 if __name__ == "__main__":

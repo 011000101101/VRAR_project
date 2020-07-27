@@ -260,7 +260,7 @@ def evaluate_model(model, X_val, y_val):
 
 
 def load_model():
-    return tf.keras.models.load_model(os.path.join(ROOT_DIR, "classifier_subsystem/tf_models_fast/"))
+    return tf.keras.models.load_model(os.path.join(ROOT_DIR, "classifier_subsystem/tf_models/"))
 
 
 if __name__ == "__main__":
